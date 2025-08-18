@@ -26,7 +26,7 @@ fi
 echo "Building '$PROGRAM_NAME'..."
 
 echo "1. Compiling UASM to x86_64 assembly..."
-cargo run "$UASM_FILE" -o "$ASM_FILE" -a x86_64 -p linux
+cargo run "$UASM_FILE" -o "$ASM_FILE" -t x86_64_linux
 
 if [ $? -ne 0 ]; then
     echo "Error: UASM compilation failed"
