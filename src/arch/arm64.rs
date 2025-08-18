@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::HashMap;
 
 pub struct ARM64CodeGen {
     register_map: HashMap<String, String>,
@@ -15,21 +16,29 @@ impl ARM64CodeGen {
         register_map.insert("r3".to_string(), "x3".to_string()); // 4th arg
         register_map.insert("r4".to_string(), "x4".to_string()); // 5th arg
         register_map.insert("r5".to_string(), "x5".to_string()); // 6th arg
+        register_map.insert("r6".to_string(), "x6".to_string()); // 7th arg
+        register_map.insert("r7".to_string(), "x7".to_string()); // 8th arg
 
-        // General-purpose registers
-        register_map.insert("r6".to_string(), "x6".to_string());
-        register_map.insert("r7".to_string(), "x7".to_string());
-        register_map.insert("r8".to_string(), "x8".to_string());
-        register_map.insert("r9".to_string(), "x9".to_string());
-        register_map.insert("r10".to_string(), "x10".to_string());
-        register_map.insert("r11".to_string(), "x11".to_string());
-        register_map.insert("r12".to_string(), "x12".to_string());
-        register_map.insert("r13".to_string(), "x13".to_string());
+        // General-purpose registers (avoiding procedure call standard conflicts)
+        register_map.insert("r8".to_string(), "x8".to_string()); // Indirect result location
+        register_map.insert("r9".to_string(), "x9".to_string()); // Temporary
+        register_map.insert("r10".to_string(), "x10".to_string()); // Temporary
+        register_map.insert("r11".to_string(), "x11".to_string()); // Temporary
+        register_map.insert("r12".to_string(), "x12".to_string()); // Temporary
+        register_map.insert("r13".to_string(), "x13".to_string()); // Temporary
+        register_map.insert("r14".to_string(), "x14".to_string()); // Temporary
+        register_map.insert("r15".to_string(), "x15".to_string()); // Temporary
+
+        // Callee-saved registers
+        register_map.insert("r19".to_string(), "x19".to_string());
+        register_map.insert("r20".to_string(), "x20".to_string());
+        register_map.insert("r21".to_string(), "x21".to_string());
+        register_map.insert("r22".to_string(), "x22".to_string());
 
         // Special purpose registers
         register_map.insert("sp".to_string(), "sp".to_string());
-        register_map.insert("sb".to_string(), "x29".to_string()); // frame pointer
-        register_map.insert("ip".to_string(), "pc".to_string());
+        register_map.insert("sb".to_string(), "x29".to_string()); // frame pointer (FP)
+        register_map.insert("ip".to_string(), "x30".to_string()); // link register (LR)
 
         ARM64CodeGen { register_map }
     }
@@ -41,58 +50,89 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn get_syntax_header(&self) -> String {
-        "\n".to_string() // ARM64 assembly doesn't need special syntax declarations
+        ".text\n.align 2\n\n".to_string()
     }
 
     fn generate_mov(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    mov {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let value: i64 = src_op.parse().unwrap_or(0);
+            if value >= 0 && value <= 65535 {
+                return format!("    mov {}, #{}\n", dst_reg, src_op);
+            } else {
+                let low = value & 0xFFFF;
+                let high = (value >> 16) & 0xFFFF;
+                if high == 0 {
+                    return format!("    mov {}, #{}\n", dst_reg, low);
+                } else {
+                    return format!(
+                        "    movz {}, #{}\n    movk {}, #{}, lsl #16\n",
+                        dst_reg, low, dst_reg, high
+                    );
+                }
+            }
+        }
+
+        if src_op.starts_with('x') || src_op.starts_with('w') || src_op == "sp" {
+            return format!("    mov {}, {}\n", dst_reg, src_op);
+        }
+
+        // format!("    mov {}, #{}\n", dst_reg, src_op)
+        format!("    ldr {}, ={}\n", dst_reg, src_op)
     }
 
     fn generate_lea(&self, dst: &str, src: &str) -> String {
-        // ARM64 uses ADR/ADRP for address calculation
-        format!(
-            "    adr {}, {}\n",
-            self.map_operand(dst),
-            self.map_memory_operand(src)
-        )
+        let src_clean = if src.starts_with('[') && src.ends_with(']') {
+            &src[1..src.len() - 1]
+        } else {
+            src
+        };
+        format!("    adr {}, {}\n", self.map_operand(dst), src_clean)
     }
 
     fn generate_load(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    ldr {}, {}\n",
-            self.map_operand(dst),
-            self.map_memory_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+
+        if !src.starts_with('[') && !src.ends_with(']') {
+            return format!("    ldr {}, ={}\n", dst_reg, src);
+        }
+
+        format!("    ldr {}, {}\n", dst_reg, self.map_memory_operand(src))
     }
 
     fn generate_store(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    str {}, {}\n",
-            self.map_operand(src),
-            self.map_memory_operand(dst)
-        )
+        let dst_mem = self.map_memory_operand(dst);
+        let src_reg = self.map_operand(src);
+
+        if src_reg.chars().all(|c| c.is_ascii_digit()) {
+            return format!("    // ERROR: str requires a register, got {}\n", src_reg);
+        }
+
+        format!("    str {}, {}\n", src_reg, dst_mem)
     }
 
     fn generate_add(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    add {}, {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!("    add {}, {}, #{}\n", dst_reg, dst_reg, src_op)
+        } else {
+            format!("    add {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        }
     }
 
     fn generate_sub(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    sub {}, {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!("    sub {}, {}, #{}\n", dst_reg, dst_reg, src_op)
+        } else {
+            format!("    sub {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        }
     }
 
     fn generate_mul(&self, dst: &str, src: &str) -> String {
@@ -138,30 +178,36 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_and(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    and {}, {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!("    and {}, {}, #{}\n", dst_reg, dst_reg, src_op)
+        } else {
+            format!("    and {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        }
     }
 
     fn generate_or(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    orr {}, {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!("    orr {}, {}, #{}\n", dst_reg, dst_reg, src_op)
+        } else {
+            format!("    orr {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        }
     }
 
     fn generate_xor(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    eor {}, {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!("    eor {}, {}, #{}\n", dst_reg, dst_reg, src_op)
+        } else {
+            format!("    eor {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        }
     }
 
     fn generate_not(&self, dst: &str) -> String {
@@ -173,37 +219,47 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_shl(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    lsl {}, {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!("    lsl {}, {}, #{}\n", dst_reg, dst_reg, src_op)
+        } else {
+            format!("    lsl {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        }
     }
 
     fn generate_shr(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    lsr {}, {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!("    lsr {}, {}, #{}\n", dst_reg, dst_reg, src_op)
+        } else {
+            format!("    lsr {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        }
     }
 
     fn generate_cmp(&self, op1: &str, op2: &str) -> String {
-        format!(
-            "    cmp {}, {}\n",
-            self.map_operand(op1),
-            self.map_operand(op2)
-        )
+        let op1_reg = self.map_operand(op1);
+        let op2_op = self.map_operand(op2);
+
+        if op2_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!("    cmp {}, #{}\n", op1_reg, op2_op)
+        } else {
+            format!("    cmp {}, {}\n", op1_reg, op2_op)
+        }
     }
 
     fn generate_test(&self, op1: &str, op2: &str) -> String {
-        format!(
-            "    tst {}, {}\n",
-            self.map_operand(op1),
-            self.map_operand(op2)
-        )
+        let op1_reg = self.map_operand(op1);
+        let op2_op = self.map_operand(op2);
+
+        if op2_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!("    tst {}, #{}\n", op1_reg, op2_op)
+        } else {
+            format!("    tst {}, {}\n", op1_reg, op2_op)
+        }
     }
 
     fn generate_jmp(&self, label: &str) -> String {
@@ -247,18 +303,32 @@ impl ArchCodeGen for ARM64CodeGen {
             "read" => "63",
             "write" => "64",
             "exit" => "93",
-            "open" => "1024",
+            "openat" => "56",
             "close" => "57",
-            _ => "0",
+            "mmap" => "222",
+            "munmap" => "215",
+            "brk" => "214",
+            _ => {
+                return format!(
+                    "    // Unknown syscall: {}\n    mov x8, #0\n    svc #0\n",
+                    name
+                );
+            }
         };
-        format!("    li a7, {}\n    ecall\n", syscall_num)
+        format!("    mov x8, #{}\n    svc #0\n", syscall_num)
     }
 
     fn map_operand(&self, operand: &str) -> String {
+        if operand.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            return operand.to_string();
+        }
+
+        if operand.starts_with('[') && operand.ends_with(']') {
+            return self.map_memory_operand(operand);
+        }
+
         if let Some(mapped) = self.register_map.get(operand) {
             mapped.clone()
-        } else if operand.starts_with('[') && operand.ends_with(']') {
-            self.map_memory_operand(operand)
         } else {
             operand.to_string()
         }
@@ -267,11 +337,46 @@ impl ArchCodeGen for ARM64CodeGen {
     fn map_memory_operand(&self, operand: &str) -> String {
         if operand.starts_with('[') && operand.ends_with(']') {
             let inner = &operand[1..operand.len() - 1].trim();
-            if let Some(mapped) = self.register_map.get(inner as &str) {
-                format!("0({})", mapped)
-            } else {
-                format!("0({})", inner)
+
+            if inner.contains('+') {
+                let parts: Vec<&str> = inner.split('+').map(|s| s.trim()).collect();
+                if parts.len() == 2 {
+                    let base = if let Some(mapped) = self.register_map.get(parts[0]) {
+                        mapped.clone()
+                    } else {
+                        parts[0].to_string()
+                    };
+
+                    if parts[1].chars().all(|c| c.is_ascii_digit()) {
+                        return format!("[{}, #{}]", base, parts[1]);
+                    } else {
+                        let offset = if let Some(mapped) = self.register_map.get(parts[1]) {
+                            mapped.clone()
+                        } else {
+                            parts[1].to_string()
+                        };
+                        return format!("[{}, {}]", base, offset);
+                    }
+                }
+            } else if inner.contains('-') {
+                let parts: Vec<&str> = inner.split('-').map(|s| s.trim()).collect();
+                if parts.len() == 2 {
+                    let base = if let Some(mapped) = self.register_map.get(parts[0]) {
+                        mapped.clone()
+                    } else {
+                        parts[0].to_string()
+                    };
+
+                    if parts[1].chars().all(|c| c.is_ascii_digit()) {
+                        return format!("[{}, #-{}]", base, parts[1]);
+                    }
+                }
             }
+
+            if let Some(mapped) = self.register_map.get(&inner.to_string()) {
+                return format!("[{}]", mapped);
+            }
+            return format!("[{}]", inner);
         } else {
             operand.to_string()
         }

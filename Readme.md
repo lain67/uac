@@ -1,213 +1,254 @@
-# UAC
+# UAC - UASM Compiler
 
-UAC or UASM Compiler is a compiler of the UASM assembly language, that is designed to be modular version of the assembly
-that compiles into native assembly code.
+UAC (UASM Compiler) is a modular assembly language compiler that translates UASM assembly into native assembly code for multiple architectures and platforms.
 
-The compiler is currently under the heavy development and not ready for use.
+> **⚠️ Development Status**: This compiler is currently under heavy development and not ready for production use.
 
-## Usage
+## Quick Start
 
-### Building from Local
+### Building from Source
 
-First clone the UAC repository:
+1. **Clone the repository**
 
-```sh
-git clone https://github.com/absurdish/uac.git
-```
+   ```bash
+   git clone https://github.com/absurdish/uac.git
+   cd uac
+   ```
 
-Then build the project:
+2. **Build the project**
 
-```sh
-cd uac
-cargo build --release
-```
+   ```bash
+   cargo build --release
+   ```
 
-And run the compiled binary:
+3. **Run the compiler**
+   ```bash
+   ./target/release/uac hello.ua -o hello.s -t x86_64_linux
+   ```
 
-```sh
-./target/release/uac hello.ua -o hello.s -t x86_64_linux
-```
+## Supported Targets
 
-## Supported Architectures
+| Architecture | Aliases            | Platforms             | Example Target |
+| :----------: | :----------------- | :-------------------- | :------------- |
+|  **AMD64**   | `amd64`, `x86_64`  | Linux, macOS, Windows | `x86_64_macos` |
+|  **ARM64**   | `arm64`, `aarch64` | Linux, macOS, Windows | `arm64_linux`  |
 
-| Architecture | Aliases            | Platforms             | Example        |
-| :----------: | ------------------ | --------------------- | -------------- |
-|    AMD64     | `amd64`, `x86_64`  | Linux, macOS, Windows | `x86_64_macos` |
-|    ARM64     | `arm64`, `aarch64` | Linux, macOS, Windows | `arm64_linux`  |
+_Roadmap: Up to 20 architectures planned across multiple platforms._
 
-Up to 20 architectures are planned to be implemented into the compiler, on multiple platforms.
+---
 
-## Documentation
+## UASM Language Reference
 
-### Sections
+### File Structure
 
-UASM file is divided into sections:
+UASM files are organized into sections that define different types of content:
 
 ```asm
-section .text ; executable code
-section .data ; initialized data
-section .bss ; uninitialized data
-section .rodata ; read-only data
+section .text    ; Executable code
+section .data    ; Initialized data
+section .bss     ; Uninitialized data
+section .rodata  ; Read-only data
 ```
-
-Where the code lives in `.text`, variables in `.data/.bss` and constants in `.rodata`.
 
 ### Labels
 
-Labels are used to mark specific locations in the code. They are defined with a trailing colon (`:`):
+Define code locations and jump targets with a trailing colon:
 
 ```asm
 main:
 loop_start:
+end_loop:
 ```
 
-### Symbols and Registers
+### Registers
 
-Symbols or the names for constants or memory offsets are defined similar to assembly languages:
+UASM uses virtual registers that map to target architecture registers:
+
+#### General Purpose
 
 ```asm
-len equ 67
+r0, r1, r2, ..., r31    ; Virtual general-purpose registers
 ```
 
-Since each chip architecture supports different registers,
-UASM uses virtual registers to abstract the differences between architectures:
+#### Special Purpose
 
 ```asm
-r0, r1, r2, ..., r31
+sp     ; Stack pointer
+sb     ; Base/frame pointer
+ip     ; Instruction pointer (read-only)
+flags  ; Condition flags register
 ```
 
-Which are mapped to target ISA registers. As for the special-purpose registers:
+### Data Definition
+
+Define and reserve memory with various data sizes:
 
 ```asm
-sp ; stack pointer
-sb ; base/frame pointer
-ip ; instruction pointer (read-only)
-flags ; condition registers
+; Data definition
+msg     db "Hello, World!", 0xA, 0    ; Define bytes
+numbers dw 1, 2, 3, 4                 ; Define words (16-bit)
+matrix  dd 1.0, 2.0, 3.0, 4.0        ; Define double words (32-bit)
+big_num dq 0x123456789ABCDEF0         ; Define quad words (64-bit)
+
+; Memory reservation
+buffer  resb 256    ; Reserve 256 bytes
+array   resw 100    ; Reserve 100 words
+stack   resd 50     ; Reserve 50 double words
+heap    resq 25     ; Reserve 25 quad words
 ```
 
-data definition
+### Constants and Symbols
+
+Define constants using the `equ` directive:
 
 ```asm
-msg db "Hello, World!", 0xA, 0
-numbers dw 1, 2, 3, 4
-matrix dd 1.0, 2.0, 3.0, 4.0
-buffer resb 256 ; reserve 256 bytes
+BUFFER_SIZE equ 1024
+MAX_RETRY   equ 3
+msg_len     equ 14
 ```
 
-- `db` = bytes
-- `dw` = word
-- `dd` = double word
-- `dq` = quad word
-- `resX` = reserved unititialized storage
+---
 
-### Instructions
+## Instruction Set
 
-data movement
+### Data Movement
 
 ```asm
-mov r0, r1
-mov r0, 42
-lea r1, [msg] ; load address of msg
-load r0, [r1] ; load from memory
-store [r1], r0 ; store into memory
+mov   r0, r1        ; Move register to register
+mov   r0, 42        ; Move immediate to register
+lea   r1, [msg]     ; Load effective address
+load  r0, [r1]      ; Load from memory address
+store [r1], r0      ; Store to memory address
 ```
 
-arithmetic
+### Arithmetic Operations
 
 ```asm
-add   r0, r1
-sub   r0, r1
-mul   r0, r1
-div   r0, r1
-mod   r0, r1
-inc   r0
-dec   r0
-neg   r0
+add   r0, r1        ; Addition
+sub   r0, r1        ; Subtraction
+mul   r0, r1        ; Multiplication
+div   r0, r1        ; Division
+mod   r0, r1        ; Modulo
+inc   r0            ; Increment
+dec   r0            ; Decrement
+neg   r0            ; Negate
 ```
 
-logic & bitwise
+### Logical & Bitwise Operations
 
 ```asm
-and   r0, r1
-or    r0, r1
-xor   r0, r1
-not   r0
-shl   r0, 2
-shr   r0, 1
+and   r0, r1        ; Bitwise AND
+or    r0, r1        ; Bitwise OR
+xor   r0, r1        ; Bitwise XOR
+not   r0            ; Bitwise NOT
+shl   r0, 2         ; Shift left by 2
+shr   r0, 1         ; Shift right by 1
 ```
 
-comparasion & flags
+### Comparison & Conditional Sets
 
 ```asm
-cmp   r0, r1
-sete  r0
-setne r0
-setl  r0
-setle r0
-setg  r0
-setge r0
-test r0, r1
+cmp   r0, r1        ; Compare two values
+test  r0, r1        ; Bitwise test
+sete  r0            ; Set if equal
+setne r0            ; Set if not equal
+setl  r0            ; Set if less
+setle r0            ; Set if less or equal
+setg  r0            ; Set if greater
+setge r0            ; Set if greater or equal
 ```
 
-control flow
+### Control Flow
 
 ```asm
-jmp    label
-je     label      ; jump if equal
-jne    label      ; jump if not equal
-jg     label      ; jump if greater
-jl     label      ; jump if less
-jge    label      ; jump if greater/equal
-jle    label      ; jump if less/equal
-call   function
-ret
+jmp   label         ; Unconditional jump
+je    label         ; Jump if equal
+jne   label         ; Jump if not equal
+jg    label         ; Jump if greater
+jl    label         ; Jump if less
+jge   label         ; Jump if greater or equal
+jle   label         ; Jump if less or equal
+call  function      ; Call function
+ret                 ; Return from function
 ```
 
-system calls
+### System Calls
+
+System calls use registers for arguments and return values:
 
 ```asm
-; arguments in r0, r1, r2, ...
-; return value in r0
-
-syscall write
-syscall read
-syscall exit
-syscall open
-syscall close
+; Arguments passed in r0, r1, r2, ...
+; Return value in r0
+syscall write       ; Write to file descriptor
+syscall read        ; Read from file descriptor
+syscall exit        ; Exit program
+syscall open        ; Open file
+syscall close       ; Close file descriptor
 ```
 
-directives
+### Directives
 
 ```asm
-global main        ; export symbol
-extern printf      ; import external symbol
-align 16           ; align next data
-equ    NAME, 123   ; constant
+global main         ; Export symbol globally
+extern printf       ; Import external symbol
+align 16            ; Align next data to 16-byte boundary
+equ NAME, 123       ; Define named constant
 ```
 
-comments
+### Comments
 
 ```asm
-; single line comment
+; This is a single-line comment
+mov r0, 42    ; Inline comment
 ```
 
-### Example
+---
+
+## Example Program
+
+Here's a complete "Hello, World!" program in UASM:
 
 ```asm
 section .data
-msg db "Hello, World!", 0xA, 0
-msg_len equ 14
+    msg     db "Hello, World!", 0xA, 0
+    msg_len equ 14
 
 section .text
-global _start
+    global _start
+
 _start:
-    ; write syscall
-    mov r0, 1          ; stdout
-    lea r1, [msg]      ; message address
-    mov r2, msg_len    ; message length
+    ; Write system call
+    mov r0, 1          ; File descriptor: stdout
+    lea r1, [msg]      ; Message address
+    mov r2, msg_len    ; Message length
     syscall write
-    
-    ; exit syscall
-    mov r0, 0          ; exit code
+
+    ; Exit system call
+    mov r0, 0          ; Exit code: success
     syscall exit
 ```
+
+### Compilation
+
+```bash
+uac hello.ua -o hello.s -t x86_64_linux
+```
+
+This generates native assembly that can be assembled and linked:
+
+```bash
+# For Linux x86_64
+as -64 hello.s -o hello.o
+ld hello.o -o hello
+./hello
+```
+
+---
+
+## Contributing
+
+UAC is in active development. Contributions, bug reports, and feature requests are welcome!
+
+## License
+
+MIT
