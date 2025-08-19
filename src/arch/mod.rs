@@ -2,13 +2,15 @@ use std::{collections::HashMap, process};
 
 use crate::{
     arch::{
-        amd64::AMD64CodeGen, arm64::ARM64CodeGen, powerpc64::PowerPC64CodeGen, risc_v::RISCVCodeGen,
+        amd64::AMD64CodeGen, arm32::ARM32CodeGen, arm64::ARM64CodeGen, powerpc64::PowerPC64CodeGen,
+        risc_v::RISCVCodeGen,
     },
-    core::TargetTriple,
+    core::{Section, TargetTriple},
     platform::Platform,
 };
 
 pub mod amd64;
+pub mod arm32;
 pub mod arm64;
 pub mod powerpc64;
 pub mod risc_v;
@@ -184,35 +186,206 @@ pub enum Architecture {
 pub trait ArchCodeGen {
     fn get_register_map(&self) -> HashMap<String, String>;
     fn get_syntax_header(&self) -> String;
+
+    //
+    // Data Movement
+    //
     fn generate_mov(&self, dst: &str, src: &str) -> String;
     fn generate_lea(&self, dst: &str, src: &str) -> String;
     fn generate_load(&self, dst: &str, src: &str) -> String;
     fn generate_store(&self, dst: &str, src: &str) -> String;
+
+    //
+    // Conditional Moves
+    //
+    fn generate_cmov_eq(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_ne(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_lt(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_le(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_gt(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_ge(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_ov(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_no(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_s(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_ns(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_p(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_np(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_a(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_ae(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_b(&self, dst: &str, src: &str) -> String;
+    fn generate_cmov_be(&self, dst: &str, src: &str) -> String;
+
+    //
+    // Stack Operations
+    //
+    fn generate_push(&self, src: &str) -> String;
+    fn generate_pop(&self, dst: &str) -> String;
+    fn generate_pusha(&self) -> String;
+    fn generate_popa(&self) -> String;
+    fn generate_enter(&self, frame_size: &str, nesting_level: &str) -> String;
+    fn generate_leave(&self) -> String;
+
+    //
+    // Arithmetic Operations
+    //
     fn generate_add(&self, dst: &str, src: &str) -> String;
     fn generate_sub(&self, dst: &str, src: &str) -> String;
     fn generate_mul(&self, dst: &str, src: &str) -> String;
+    fn generate_imul(&self, dst: &str, src: &str) -> String;
     fn generate_div(&self, dst: &str, src: &str) -> String;
+    fn generate_idiv(&self, dst: &str, src: &str) -> String;
+    fn generate_mod(&self, dst: &str, src: &str) -> String;
     fn generate_inc(&self, dst: &str) -> String;
     fn generate_dec(&self, dst: &str) -> String;
     fn generate_neg(&self, dst: &str) -> String;
+
+    //
+    // Logical & Bitwise Operations
+    //
     fn generate_and(&self, dst: &str, src: &str) -> String;
     fn generate_or(&self, dst: &str, src: &str) -> String;
     fn generate_xor(&self, dst: &str, src: &str) -> String;
     fn generate_not(&self, dst: &str) -> String;
+    fn generate_andn(&self, dst: &str, src: &str) -> String;
     fn generate_shl(&self, dst: &str, src: &str) -> String;
     fn generate_shr(&self, dst: &str, src: &str) -> String;
+    fn generate_sal(&self, dst: &str, src: &str) -> String;
+    fn generate_sar(&self, dst: &str, src: &str) -> String;
+    fn generate_rol(&self, dst: &str, src: &str) -> String;
+    fn generate_ror(&self, dst: &str, src: &str) -> String;
+    fn generate_rcl(&self, dst: &str, src: &str) -> String;
+    fn generate_rcr(&self, dst: &str, src: &str) -> String;
+    fn generate_bextr(&self, dst: &str, src: &str, imm: &str) -> String;
+    fn generate_bsf(&self, dst: &str, src: &str) -> String;
+    fn generate_bsr(&self, dst: &str, src: &str) -> String;
+
+    //
+    // Comparison & Conditional Sets
+    //
     fn generate_cmp(&self, op1: &str, op2: &str) -> String;
     fn generate_test(&self, op1: &str, op2: &str) -> String;
+    fn generate_bt(&self, dst: &str, bit: &str) -> String;
+    fn generate_btr(&self, dst: &str, bit: &str) -> String;
+    fn generate_bts(&self, dst: &str, bit: &str) -> String;
+    fn generate_btc(&self, dst: &str, bit: &str) -> String;
+    fn generate_set_eq(&self, dst: &str) -> String;
+    fn generate_set_ne(&self, dst: &str) -> String;
+    fn generate_set_lt(&self, dst: &str) -> String;
+    fn generate_set_le(&self, dst: &str) -> String;
+    fn generate_set_gt(&self, dst: &str) -> String;
+    fn generate_set_ge(&self, dst: &str) -> String;
+    fn generate_set_ov(&self, dst: &str) -> String;
+    fn generate_set_no(&self, dst: &str) -> String;
+    fn generate_set_s(&self, dst: &str) -> String;
+    fn generate_set_ns(&self, dst: &str) -> String;
+    fn generate_set_p(&self, dst: &str) -> String;
+    fn generate_set_np(&self, dst: &str) -> String;
+    fn generate_set_a(&self, dst: &str) -> String;
+    fn generate_set_ae(&self, dst: &str) -> String;
+    fn generate_set_b(&self, dst: &str) -> String;
+    fn generate_set_be(&self, dst: &str) -> String;
+
+    //
+    // String Operations
+    //
+    fn generate_cmps(&self, src1: &str, src2: &str) -> String;
+    fn generate_scas(&self, src: &str, val: &str) -> String;
+    fn generate_stos(&self, dst: &str, src: &str) -> String;
+    fn generate_lods(&self, dst: &str, src: &str) -> String;
+    fn generate_movs(&self, dst: &str, src: &str) -> String;
+
+    //
+    // Data Conversion
+    //
+    fn generate_cbw(&self, dst: &str) -> String;
+    fn generate_cwd(&self, dst: &str) -> String;
+    fn generate_cdq(&self, dst: &str) -> String;
+    fn generate_cqo(&self, dst: &str) -> String;
+    fn generate_cwde(&self, dst: &str) -> String;
+    fn generate_cdqe(&self, dst: &str) -> String;
+
+    //
+    // Control Flow
+    //
     fn generate_jmp(&self, label: &str) -> String;
     fn generate_je(&self, label: &str) -> String;
     fn generate_jne(&self, label: &str) -> String;
-    fn generate_jg(&self, label: &str) -> String;
     fn generate_jl(&self, label: &str) -> String;
-    fn generate_jge(&self, label: &str) -> String;
     fn generate_jle(&self, label: &str) -> String;
+    fn generate_jg(&self, label: &str) -> String;
+    fn generate_jge(&self, label: &str) -> String;
+    fn generate_jo(&self, label: &str) -> String;
+    fn generate_jno(&self, label: &str) -> String;
+    fn generate_js(&self, label: &str) -> String;
+    fn generate_jns(&self, label: &str) -> String;
+    fn generate_jp(&self, label: &str) -> String;
+    fn generate_jnp(&self, label: &str) -> String;
+    fn generate_ja(&self, label: &str) -> String;
+    fn generate_jae(&self, label: &str) -> String;
+    fn generate_jb(&self, label: &str) -> String;
+    fn generate_jbe(&self, label: &str) -> String;
+    fn generate_loop_eq(&self, label: &str) -> String;
+    fn generate_loop_ne(&self, label: &str) -> String;
     fn generate_call(&self, func: &str) -> String;
     fn generate_ret(&self) -> String;
+
+    //
+    // I/O Operations
+    //
+    fn generate_in(&self, dst: &str, port: &str) -> String;
+    fn generate_out(&self, port: &str, src: &str) -> String;
+    fn generate_ins(&self, dst: &str, port: &str) -> String;
+    fn generate_outs(&self, port: &str, src: &str) -> String;
+
+    //
+    // System & CPU Operations
+    //
+    fn generate_cpuid(&self) -> String;
+    fn generate_lfence(&self) -> String;
+    fn generate_sfence(&self) -> String;
+    fn generate_mfence(&self) -> String;
+    fn generate_prefetch(&self, addr: &str) -> String;
+    fn generate_clflush(&self, addr: &str) -> String;
+    fn generate_clwb(&self, addr: &str) -> String;
+
+    //
+    // System Calls
+    //
     fn generate_syscall(&self, name: &str) -> String;
+
+    //
+    // Directives
+    //
+    fn generate_global(&self, symbol: &str) -> String;
+    fn generate_extern(&self, symbol: &str) -> String;
+    fn generate_align(&self, n: &str) -> String;
+
+    //
+    // Data Definition
+    //
+    fn generate_data_byte(&self, name: &str, values: &[String]) -> String;
+    fn generate_data_word(&self, name: &str, values: &[String]) -> String;
+    fn generate_data_dword(&self, name: &str, values: &[String]) -> String;
+    fn generate_data_qword(&self, name: &str, values: &[String]) -> String;
+
+    //
+    // Memory Reservation
+    //
+    fn generate_reserve_byte(&self, name: &str, count: &str) -> String;
+    fn generate_reserve_word(&self, name: &str, count: &str) -> String;
+    fn generate_reserve_dword(&self, name: &str, count: &str) -> String;
+    fn generate_reserve_qword(&self, name: &str, count: &str) -> String;
+
+    //
+    // Constants and Sections
+    //
+    fn generate_equ(&self, name: &str, value: &str) -> String;
+    fn generate_section(&self, section: &Section) -> String;
+    fn generate_label(&self, name: &str) -> String;
+
+    //
+    // Utility Methods
+    //
     fn map_operand(&self, operand: &str) -> String;
     fn map_memory_operand(&self, operand: &str) -> String;
 }
@@ -222,7 +395,8 @@ pub fn create_arch_codegen(architecture: &Architecture) -> Box<dyn ArchCodeGen> 
         Architecture::AMD64 => Box::new(AMD64CodeGen::new()),
         Architecture::ARM64 => Box::new(ARM64CodeGen::new()),
         Architecture::RISCV => Box::new(RISCVCodeGen::new()),
-        Architecture::PowerPC64 => Box::new(PowerPC64CodeGen::new()),
+        // Architecture::ARM32 => Box::new(ARM32CodeGen::new()),
+        // Architecture::PowerPC64 => Box::new(PowerPC64CodeGen::new()),
         _ => {
             eprintln!(
                 "Error: Architecture {:?} is not currently implemented",

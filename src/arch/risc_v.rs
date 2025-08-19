@@ -470,4 +470,416 @@ impl ArchCodeGen for RISCVCodeGen {
             operand.to_string()
         }
     }
+
+    fn generate_cmov_eq(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_ne(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_lt(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_le(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_gt(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_ge(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_ov(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_no(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_s(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_ns(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_p(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_np(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_a(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_ae(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_b(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmov_be(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_push(&self, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_pop(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_pusha(&self) -> String {
+        todo!()
+    }
+
+    fn generate_popa(&self) -> String {
+        todo!()
+    }
+
+    fn generate_enter(&self, frame_size: &str, nesting_level: &str) -> String {
+        todo!()
+    }
+
+    fn generate_leave(&self) -> String {
+        todo!()
+    }
+
+    fn generate_imul(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_idiv(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_mod(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_andn(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_sal(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_sar(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_rol(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_ror(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_rcl(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_rcr(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_bextr(&self, dst: &str, src: &str, imm: &str) -> String {
+        todo!()
+    }
+
+    fn generate_bsf(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_bsr(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_bt(&self, dst: &str, bit: &str) -> String {
+        todo!()
+    }
+
+    fn generate_btr(&self, dst: &str, bit: &str) -> String {
+        todo!()
+    }
+
+    fn generate_bts(&self, dst: &str, bit: &str) -> String {
+        todo!()
+    }
+
+    fn generate_btc(&self, dst: &str, bit: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_eq(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_ne(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_lt(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_le(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_gt(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_ge(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_ov(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_no(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_s(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_ns(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_p(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_np(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_a(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_ae(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_b(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_set_be(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cmps(&self, src1: &str, src2: &str) -> String {
+        todo!()
+    }
+
+    fn generate_scas(&self, src: &str, val: &str) -> String {
+        todo!()
+    }
+
+    fn generate_stos(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_lods(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_movs(&self, dst: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cbw(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cwd(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cdq(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cqo(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cwde(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cdqe(&self, dst: &str) -> String {
+        todo!()
+    }
+
+    fn generate_jo(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_jno(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_js(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_jns(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_jp(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_jnp(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_ja(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_jae(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_jb(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_jbe(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_loop_eq(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_loop_ne(&self, label: &str) -> String {
+        todo!()
+    }
+
+    fn generate_in(&self, dst: &str, port: &str) -> String {
+        todo!()
+    }
+
+    fn generate_out(&self, port: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_ins(&self, dst: &str, port: &str) -> String {
+        todo!()
+    }
+
+    fn generate_outs(&self, port: &str, src: &str) -> String {
+        todo!()
+    }
+
+    fn generate_cpuid(&self) -> String {
+        todo!()
+    }
+
+    fn generate_lfence(&self) -> String {
+        todo!()
+    }
+
+    fn generate_sfence(&self) -> String {
+        todo!()
+    }
+
+    fn generate_mfence(&self) -> String {
+        todo!()
+    }
+
+    fn generate_prefetch(&self, addr: &str) -> String {
+        todo!()
+    }
+
+    fn generate_clflush(&self, addr: &str) -> String {
+        todo!()
+    }
+
+    fn generate_clwb(&self, addr: &str) -> String {
+        todo!()
+    }
+
+    fn generate_global(&self, symbol: &str) -> String {
+        todo!()
+    }
+
+    fn generate_extern(&self, symbol: &str) -> String {
+        todo!()
+    }
+
+    fn generate_align(&self, n: &str) -> String {
+        todo!()
+    }
+
+    fn generate_data_byte(&self, name: &str, values: &[String]) -> String {
+        todo!()
+    }
+
+    fn generate_data_word(&self, name: &str, values: &[String]) -> String {
+        todo!()
+    }
+
+    fn generate_data_dword(&self, name: &str, values: &[String]) -> String {
+        todo!()
+    }
+
+    fn generate_data_qword(&self, name: &str, values: &[String]) -> String {
+        todo!()
+    }
+
+    fn generate_reserve_byte(&self, name: &str, count: &str) -> String {
+        todo!()
+    }
+
+    fn generate_reserve_word(&self, name: &str, count: &str) -> String {
+        todo!()
+    }
+
+    fn generate_reserve_dword(&self, name: &str, count: &str) -> String {
+        todo!()
+    }
+
+    fn generate_reserve_qword(&self, name: &str, count: &str) -> String {
+        todo!()
+    }
+
+    fn generate_equ(&self, name: &str, value: &str) -> String {
+        todo!()
+    }
+
+    fn generate_section(&self, section: &Section) -> String {
+        todo!()
+    }
+
+    fn generate_label(&self, name: &str) -> String {
+        todo!()
+    }
 }

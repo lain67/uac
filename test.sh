@@ -12,6 +12,7 @@ TARGETS=(
   "amd64_macos"
   "amd64_windows"
   "arm64_linux"
+  "arm32_linux"
   "arm64_macos"
   "arm64_windows"
   "riscv64_linux"
@@ -37,6 +38,15 @@ for target in "${TARGETS[@]}"; do
       else
         llvm-mc --triple=aarch64-linux-gnu -arch=aarch64 \
                 -filetype=obj -o "$obj_file" "$asm_file"
+      fi
+      ;;
+
+    arm32_linux)
+      if command -v aarch32-linux-gnu-as >/dev/null 2>&1; then
+        aarch32-linux-gnu-as "$asm_file" -o "$obj_file"
+      else
+          llvm-mc --triple=armv7-none-linux-gnueabihf -arch=arm \
+                  -filetype=obj -o "$obj_file" "$asm_file"
       fi
       ;;
 

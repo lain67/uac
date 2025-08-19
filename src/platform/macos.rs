@@ -9,6 +9,7 @@ impl PlatformCodeGen for MacOSPlatform {
             Section::Data => ".data\n".to_string(),
             Section::Bss => ".bss\n".to_string(),
             Section::Rodata => ".const\n".to_string(),
+            Section::Custom(section) => format!(".{}\n", section),
         }
     }
 

@@ -114,15 +114,11 @@ impl ArchCodeGen for AMD64CodeGen {
         if dst_reg != "rax" {
             result.push_str(&format!("    mov rax, {}\n", dst_reg));
         }
-
         result.push_str("    cqo\n");
-
         result.push_str(&format!("    idiv {}\n", src_op));
-
         if dst_reg != "rax" {
             result.push_str(&format!("    mov {}, rax\n", dst_reg));
         }
-
         if need_save_rdx {
             result.push_str("    pop rdx\n");
         }
@@ -268,7 +264,586 @@ impl ArchCodeGen for AMD64CodeGen {
         format!("    mov rax, {}\n    syscall\n", syscall_num)
     }
 
+    // Conditional Moves (real AMD64)
+    fn generate_cmov_eq(&self, dst: &str, src: &str) -> String {
+        format!(
+            "    cmove {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_ne(&self, dst: &str, src: &str) -> String {
+        format!(
+            "    cmovne {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_lt(&self, dst: &str, src: &str) -> String {
+        format!(
+            "    cmovl {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_le(&self, dst: &str, src: &str) -> String {
+        format!(
+            "    cmovle {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_gt(&self, dst: &str, src: &str) -> String {
+        format!(
+            "    cmovg {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_ge(&self, dst: &str, src: &str) -> String {
+        format!(
+            "    cmovge {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+
+    // Stack
+    fn generate_push(&self, src: &str) -> String {
+        format!("    push {}\n", self.map_operand(src))
+    }
+    fn generate_pop(&self, dst: &str) -> String {
+        format!("    pop {}\n", self.map_operand(dst))
+    }
+
+    // Data Section
+    fn generate_global(&self, symbol: &str) -> String {
+        format!(".global {}\n", symbol)
+    }
+    fn generate_extern(&self, symbol: &str) -> String {
+        format!(".extern {}\n", symbol)
+    }
+    fn generate_align(&self, n: &str) -> String {
+        format!(".p2align {}\n", n)
+    }
+    fn generate_data_byte(&self, name: &str, values: &[String]) -> String {
+        format!("{}: .byte {}\n", name, values.join(", "))
+    }
+    fn generate_data_word(&self, name: &str, values: &[String]) -> String {
+        format!("{}: .word {}\n", name, values.join(", "))
+    }
+    fn generate_data_dword(&self, name: &str, values: &[String]) -> String {
+        format!("{}: .long {}\n", name, values.join(", "))
+    }
+    fn generate_data_qword(&self, name: &str, values: &[String]) -> String {
+        format!("{}: .quad {}\n", name, values.join(", "))
+    }
+    fn generate_reserve_byte(&self, name: &str, count: &str) -> String {
+        format!("{}: .skip {}, 0\n", name, count)
+    }
+    fn generate_reserve_word(&self, name: &str, count: &str) -> String {
+        format!("{}: .skip {}, 0\n", name, count)
+    }
+    fn generate_reserve_dword(&self, name: &str, count: &str) -> String {
+        // Each dword: 4 bytes
+        format!(
+            "{}: .skip {}, 0\n",
+            name,
+            4 * count.parse::<usize>().unwrap_or(1)
+        )
+    }
+    fn generate_reserve_qword(&self, name: &str, count: &str) -> String {
+        // Each qword: 8 bytes
+        format!(
+            "{}: .skip {}, 0\n",
+            name,
+            8 * count.parse::<usize>().unwrap_or(1)
+        )
+    }
+    fn generate_equ(&self, name: &str, value: &str) -> String {
+        format!("{} = {}\n", name, value)
+    }
+
+    fn generate_section(&self, section: &Section) -> String {
+        match section {
+            Section::Text => ".section .text\n".to_string(),
+            Section::Data => ".section .data\n".to_string(),
+            Section::Bss => ".section .bss\n".to_string(),
+            Section::Rodata => ".section .rodata\n".to_string(),
+            Section::Custom(s) => format!(".section {}\n", s),
+        }
+    }
+    fn generate_in(&self, dst: &str, port: &str) -> String {
+        format!(
+            "    in {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(port)
+        )
+    }
+    fn generate_out(&self, port: &str, src: &str) -> String {
+        format!(
+            "    out {}, {}\n",
+            self.map_operand(port),
+            self.map_operand(src)
+        )
+    }
+    fn generate_ins(&self, dst: &str, port: &str) -> String {
+        format!(
+            "    ins {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(port)
+        )
+    }
+    fn generate_outs(&self, port: &str, src: &str) -> String {
+        format!(
+            "    outs {}, {}\n",
+            self.map_operand(port),
+            self.map_operand(src)
+        )
+    }
+
+    fn generate_sal(&self, dst: &str, src: &str) -> String {
+        // synonym for SHL
+        self.generate_shl(dst, src)
+    }
+    fn generate_sar(&self, dst: &str, src: &str) -> String {
+        let src_op = self.map_operand(src);
+        if src_op != "cl" && !src_op.chars().all(|c| c.is_ascii_digit()) {
+            format!(
+                "    mov cl, {}\n    sar {}, cl\n",
+                src_op,
+                self.map_operand(dst)
+            )
+        } else {
+            format!("    sar {}, {}\n", self.map_operand(dst), src_op)
+        }
+    }
+    fn generate_rol(&self, dst: &str, src: &str) -> String {
+        let src_op = self.map_operand(src);
+        if src_op != "cl" && !src_op.chars().all(|c| c.is_ascii_digit()) {
+            format!(
+                "    mov cl, {}\n    rol {}, cl\n",
+                src_op,
+                self.map_operand(dst)
+            )
+        } else {
+            format!("    rol {}, {}\n", self.map_operand(dst), src_op)
+        }
+    }
+    fn generate_ror(&self, dst: &str, src: &str) -> String {
+        let src_op = self.map_operand(src);
+        if src_op != "cl" && !src_op.chars().all(|c| c.is_ascii_digit()) {
+            format!(
+                "    mov cl, {}\n    ror {}, cl\n",
+                src_op,
+                self.map_operand(dst)
+            )
+        } else {
+            format!("    ror {}, {}\n", self.map_operand(dst), src_op)
+        }
+    }
+    fn generate_rcl(&self, dst: &str, src: &str) -> String {
+        let src_op = self.map_operand(src);
+        if src_op != "cl" && !src_op.chars().all(|c| c.is_ascii_digit()) {
+            format!(
+                "    mov cl, {}\n    rcl {}, cl\n",
+                src_op,
+                self.map_operand(dst)
+            )
+        } else {
+            format!("    rcl {}, {}\n", self.map_operand(dst), src_op)
+        }
+    }
+    fn generate_rcr(&self, dst: &str, src: &str) -> String {
+        let src_op = self.map_operand(src);
+        if src_op != "cl" && !src_op.chars().all(|c| c.is_ascii_digit()) {
+            format!(
+                "    mov cl, {}\n    rcr {}, cl\n",
+                src_op,
+                self.map_operand(dst)
+            )
+        } else {
+            format!("    rcr {}, {}\n", self.map_operand(dst), src_op)
+        }
+    }
+
+    fn generate_imul(&self, dst: &str, src: &str) -> String {
+        format!(
+            "    imul {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_idiv(&self, dst: &str, src: &str) -> String {
+        // Same pattern as generate_div:
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        let mut result = String::new();
+        let need_save_rdx = dst_reg != "rdx" && src_op != "rdx";
+        if need_save_rdx {
+            result.push_str("    push rdx\n");
+        }
+        if dst_reg != "rax" {
+            result.push_str(&format!("    mov rax, {}\n", dst_reg));
+        }
+        result.push_str("    cqo\n");
+        result.push_str(&format!("    idiv {}\n", src_op));
+        if dst_reg != "rax" {
+            result.push_str(&format!("    mov {}, rax\n", dst_reg));
+        }
+        if need_save_rdx {
+            result.push_str("    pop rdx\n");
+        }
+        result
+    }
+    fn generate_mod(&self, dst: &str, src: &str) -> String {
+        // Store result (remainder) in dst, like idiv but copy rdx to dst
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        let mut result = String::new();
+        let need_save_rdx = dst_reg != "rdx" && src_op != "rdx";
+        if need_save_rdx {
+            result.push_str("    push rdx\n");
+        }
+        result.push_str(&format!("    mov rax, {}\n", dst_reg));
+        result.push_str("    cqo\n");
+        result.push_str(&format!("    idiv {}\n", src_op));
+        if dst_reg != "rdx" {
+            result.push_str(&format!("    mov {}, rdx\n", dst_reg));
+        }
+        if need_save_rdx {
+            result.push_str("    pop rdx\n");
+        }
+        result
+    }
+
+    fn generate_cmov_ov(&self, dst: &str, src: &str) -> String {
+        // Overflow
+        format!(
+            "    cmovo {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_no(&self, dst: &str, src: &str) -> String {
+        // Not overflow
+        format!(
+            "    cmovno {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_s(&self, dst: &str, src: &str) -> String {
+        // Sign
+        format!(
+            "    cmovs {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_ns(&self, dst: &str, src: &str) -> String {
+        // Not sign
+        format!(
+            "    cmovns {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_p(&self, dst: &str, src: &str) -> String {
+        // Parity
+        format!(
+            "    cmovp {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_np(&self, dst: &str, src: &str) -> String {
+        // Not parity
+        format!(
+            "    cmovnp {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_a(&self, dst: &str, src: &str) -> String {
+        // Above (CF=0 and ZF=0, unsigned)
+        format!(
+            "    cmova {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_ae(&self, dst: &str, src: &str) -> String {
+        // Above or equal (CF=0, unsigned)
+        format!(
+            "    cmovae {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_b(&self, dst: &str, src: &str) -> String {
+        // Below (CF=1, unsigned)
+        format!(
+            "    cmovb {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_cmov_be(&self, dst: &str, src: &str) -> String {
+        // Below or equal (CF=1 or ZF=1, unsigned)
+        format!(
+            "    cmovbe {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+
+    fn generate_pusha(&self) -> String {
+        self.register_map
+            .iter()
+            .map(|r| format!("    push {}\n", r.1))
+            .collect()
+    }
+    fn generate_popa(&self) -> String {
+        self.register_map
+            .iter()
+            .map(|r| {
+                if r.1 != "rsp" {
+                    format!("    pop {}\n", r.1)
+                } else {
+                    "".to_string()
+                }
+            })
+            .collect()
+    }
+
+    fn generate_enter(&self, frame_size: &str, nesting_level: &str) -> String {
+        // nesting_level is rarely used, pass 0 normally.
+        format!("    enter {}, {}\n", frame_size, nesting_level)
+    }
+    fn generate_leave(&self) -> String {
+        "    leave\n".to_string()
+    }
+
+    fn generate_andn(&self, dst: &str, src: &str) -> String {
+        // ANDN (BMI1) = dest = ~dst & src (non-commutative!)
+        format!(
+            "    andn {}, {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src),
+            self.map_operand(dst)
+        )
+    }
+
+    fn generate_bextr(&self, dst: &str, src: &str, imm: &str) -> String {
+        // BMI1 instruction: dst = bit-field extract(src, imm)
+        format!(
+            "    bextr {}, {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src),
+            imm
+        )
+    }
+    fn generate_bsf(&self, dst: &str, src: &str) -> String {
+        format!(
+            "    bsf {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_bsr(&self, dst: &str, src: &str) -> String {
+        format!(
+            "    bsr {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
+    }
+    fn generate_bt(&self, dst: &str, bit: &str) -> String {
+        format!(
+            "    bt {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(bit)
+        )
+    }
+    fn generate_btr(&self, dst: &str, bit: &str) -> String {
+        format!(
+            "    btr {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(bit)
+        )
+    }
+    fn generate_bts(&self, dst: &str, bit: &str) -> String {
+        format!(
+            "    bts {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(bit)
+        )
+    }
+    fn generate_btc(&self, dst: &str, bit: &str) -> String {
+        format!(
+            "    btc {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(bit)
+        )
+    }
+
+    fn generate_set_eq(&self, dst: &str) -> String {
+        // ZF == 1
+        format!("    setz {}\n", self.map_operand(dst))
+    }
+    fn generate_set_ne(&self, dst: &str) -> String {
+        // ZF == 0
+        format!("    setnz {}\n", self.map_operand(dst))
+    }
+    fn generate_set_lt(&self, dst: &str) -> String {
+        // SF != OF (signed <
+        format!("    setl {}\n", self.map_operand(dst))
+    }
+    fn generate_set_le(&self, dst: &str) -> String {
+        // (
+        format!("    setle {}\n", self.map_operand(dst))
+    }
+    fn generate_set_gt(&self, dst: &str) -> String {
+        format!("    setg {}\n", self.map_operand(dst))
+    }
+    fn generate_set_ge(&self, dst: &str) -> String {
+        format!("    setge {}\n", self.map_operand(dst))
+    }
+    fn generate_set_ov(&self, dst: &str) -> String {
+        format!("    seto {}\n", self.map_operand(dst))
+    }
+    fn generate_set_no(&self, dst: &str) -> String {
+        format!("    setno {}\n", self.map_operand(dst))
+    }
+    fn generate_set_s(&self, dst: &str) -> String {
+        format!("    sets {}\n", self.map_operand(dst))
+    }
+    fn generate_set_ns(&self, dst: &str) -> String {
+        format!("    setns {}\n", self.map_operand(dst))
+    }
+    fn generate_set_p(&self, dst: &str) -> String {
+        format!("    setp {}\n", self.map_operand(dst))
+    }
+    fn generate_set_np(&self, dst: &str) -> String {
+        format!("    setnp {}\n", self.map_operand(dst))
+    }
+    fn generate_set_a(&self, dst: &str) -> String {
+        format!("    seta {}\n", self.map_operand(dst))
+    }
+    fn generate_set_ae(&self, dst: &str) -> String {
+        format!("    setae {}\n", self.map_operand(dst))
+    }
+    fn generate_set_b(&self, dst: &str) -> String {
+        format!("    setb {}\n", self.map_operand(dst))
+    }
+    fn generate_set_be(&self, dst: &str) -> String {
+        format!("    setbe {}\n", self.map_operand(dst))
+    }
+
+    fn generate_cmps(&self, _src1: &str, _src2: &str) -> String {
+        "    cmpsq\n".to_string()
+    }
+    fn generate_scas(&self, _src: &str, _val: &str) -> String {
+        "    scasq\n".to_string()
+    }
+    fn generate_stos(&self, _dst: &str, _src: &str) -> String {
+        "    stosq\n".to_string()
+    }
+    fn generate_lods(&self, _dst: &str, _src: &str) -> String {
+        "    lodsq\n".to_string()
+    }
+    fn generate_movs(&self, _dst: &str, _src: &str) -> String {
+        "    movsq\n".to_string()
+    }
+
+    fn generate_cbw(&self, _dst: &str) -> String {
+        "    cbw\n".to_string()
+    }
+    fn generate_cwd(&self, _dst: &str) -> String {
+        "    cwd\n".to_string()
+    }
+    fn generate_cdq(&self, _dst: &str) -> String {
+        "    cdq\n".to_string()
+    }
+    fn generate_cqo(&self, _dst: &str) -> String {
+        "    cqo\n".to_string()
+    }
+    fn generate_cwde(&self, _dst: &str) -> String {
+        "    cwde\n".to_string()
+    }
+    fn generate_cdqe(&self, _dst: &str) -> String {
+        "    cdqe\n".to_string()
+    }
+
+    fn generate_jo(&self, label: &str) -> String {
+        format!("    jo {}\n", label)
+    }
+    fn generate_jno(&self, label: &str) -> String {
+        format!("    jno {}\n", label)
+    }
+    fn generate_js(&self, label: &str) -> String {
+        format!("    js {}\n", label)
+    }
+    fn generate_jns(&self, label: &str) -> String {
+        format!("    jns {}\n", label)
+    }
+    fn generate_jp(&self, label: &str) -> String {
+        format!("    jp {}\n", label)
+    }
+    fn generate_jnp(&self, label: &str) -> String {
+        format!("    jnp {}\n", label)
+    }
+    fn generate_ja(&self, label: &str) -> String {
+        format!("    ja {}\n", label)
+    }
+    fn generate_jae(&self, label: &str) -> String {
+        format!("    jae {}\n", label)
+    }
+    fn generate_jb(&self, label: &str) -> String {
+        format!("    jb {}\n", label)
+    }
+    fn generate_jbe(&self, label: &str) -> String {
+        format!("    jbe {}\n", label)
+    }
+
+    fn generate_loop_eq(&self, label: &str) -> String {
+        // not standard in x86_64
+        format!("    loop {}\n", label)
+    }
+    fn generate_loop_ne(&self, label: &str) -> String {
+        // not standard in x86_64
+        format!("    loop {}\n", label)
+    }
+
+    // Utility
+    fn generate_label(&self, name: &str) -> String {
+        format!("{}:\n", name)
+    }
+    fn generate_cpuid(&self) -> String {
+        "    cpuid\n".to_string()
+    }
+    fn generate_lfence(&self) -> String {
+        "    lfence\n".to_string()
+    }
+    fn generate_sfence(&self) -> String {
+        "    sfence\n".to_string()
+    }
+    fn generate_mfence(&self) -> String {
+        "    mfence\n".to_string()
+    }
+    fn generate_prefetch(&self, addr: &str) -> String {
+        format!("    prefetch {}\n", self.map_memory_operand(addr))
+    }
+    fn generate_clflush(&self, addr: &str) -> String {
+        format!("    clflush {}\n", self.map_memory_operand(addr))
+    }
+    fn generate_clwb(&self, addr: &str) -> String {
+        format!("    clwb {}\n", self.map_memory_operand(addr))
+    }
+
+    // Memory/Register mapping functions (already present in your codebase)
     fn map_operand(&self, operand: &str) -> String {
+        // as in your code
         if operand.chars().all(|c| c.is_ascii_digit() || c == '-') {
             return operand.to_string();
         }
@@ -284,6 +859,7 @@ impl ArchCodeGen for AMD64CodeGen {
     }
 
     fn map_memory_operand(&self, operand: &str) -> String {
+        // as in your code
         if operand.starts_with('[') && operand.ends_with(']') {
             let inner = &operand[1..operand.len() - 1].trim();
 

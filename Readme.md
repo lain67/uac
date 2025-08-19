@@ -40,71 +40,109 @@ _Roadmap: Up to 20 architectures planned across multiple platforms._
 
 ---
 
-## UASM Language Reference
+# UASM Language Reference
 
-### File Structure
+## File Structure
 
-UASM files are organized into sections that define different types of content:
+UASM files are divided into **sections**:
 
-```asm
-section .text    ; Executable code
-section .data    ; Initialized data
-section .bss     ; Uninitialized data
-section .rodata  ; Read-only data
+```
+section .text     ; Executable code
+section .data     ; Initialized data
+section .bss      ; Uninitialized data
+section .rodata   ; Read-only data
 ```
 
-### Labels
+---
 
-Define code locations and jump targets with a trailing colon:
+## Labels
 
-```asm
+Use labels to mark **locations in code**:
+
+```
+label_name:       ; Define a label
+```
+
+Example:
+
+```
 main:
 loop_start:
 end_loop:
 ```
 
-### Registers
+---
 
-UASM uses virtual registers that map to target architecture registers:
+## Registers
 
-#### General Purpose
+### General Purpose
 
-```asm
-r0, r1, r2, ..., r31    ; Virtual general-purpose registers
+```
+r0, r1, r2, ..., r31    ; Virtual GPRs
 ```
 
-#### Special Purpose
+### Special Purpose
 
-```asm
-sp     ; Stack pointer
-sb     ; Base/frame pointer
-ip     ; Instruction pointer (read-only)
-flags  ; Condition flags register
+```
+sp      ; Stack pointer
+sb      ; Base/frame pointer
+ip      ; Instruction pointer (read-only)
+flags   ; Condition flags register
 ```
 
-### Data Definition
+---
 
-Define and reserve memory with various data sizes:
+## Data Definition
 
-```asm
-; Data definition
-msg     db "Hello, World!", 0xA, 0    ; Define bytes
-numbers dw 1, 2, 3, 4                 ; Define words (16-bit)
-matrix  dd 1.0, 2.0, 3.0, 4.0        ; Define double words (32-bit)
-big_num dq 0x123456789ABCDEF0         ; Define quad words (64-bit)
+### Define Memory with Initial Values
 
-; Memory reservation
-buffer  resb 256    ; Reserve 256 bytes
-array   resw 100    ; Reserve 100 words
-stack   resd 50     ; Reserve 50 double words
-heap    resq 25     ; Reserve 25 quad words
+```
+db      ; Define bytes
+dw      ; Define words (16-bit)
+dd      ; Define double words (32-bit)
+dq      ; Define quad words (64-bit)
 ```
 
-### Constants and Symbols
+Example:
 
-Define constants using the `equ` directive:
+```
+msg      db "Hello, World!", 0xA, 0
+numbers  dw 1, 2, 3, 4
+matrix   dd 1.0, 2.0, 3.0, 4.0
+big_num  dq 0x123456789ABCDEF0
+```
 
-```asm
+### Reserve Memory without Initial Values
+
+```
+resb    n      ; Reserve n bytes
+resw    n      ; Reserve n words
+resd    n      ; Reserve n double words
+resq    n      ; Reserve n quad words
+```
+
+Example:
+
+```
+buffer  resb 256
+array   resw 100
+stack   resd 50
+heap    resq 25
+```
+
+---
+
+## Constants and Symbols
+
+Define **named constants**:
+
+```
+equ NAME, value
+```
+
+Example:
+
+```
 BUFFER_SIZE equ 1024
 MAX_RETRY   equ 3
 msg_len     equ 14
@@ -112,98 +150,193 @@ msg_len     equ 14
 
 ---
 
-## Instruction Set
 
-### Data Movement
+## Data Movement
 
-```asm
-mov   r0, r1        ; Move register to register
-mov   r0, 42        ; Move immediate to register
-lea   r1, [msg]     ; Load effective address
-load  r0, [r1]      ; Load from memory address
-store [r1], r0      ; Store to memory address
+```
+mov    dest, src       ; Move value from src to dest
+lea    dest, addr      ; Load effective address
+load   dest, [addr]    ; Load from memory
+store  [addr], src     ; Store to memory
 ```
 
-### Arithmetic Operations
+### Conditional Moves
 
-```asm
-add   r0, r1        ; Addition
-sub   r0, r1        ; Subtraction
-mul   r0, r1        ; Multiplication
-div   r0, r1        ; Division
-mod   r0, r1        ; Modulo
-inc   r0            ; Increment
-dec   r0            ; Decrement
-neg   r0            ; Negate
+```
+cmovCC dest, src       ; Move if condition CC is met
 ```
 
-### Logical & Bitwise Operations
+Conditions:
 
-```asm
-and   r0, r1        ; Bitwise AND
-or    r0, r1        ; Bitwise OR
-xor   r0, r1        ; Bitwise XOR
-not   r0            ; Bitwise NOT
-shl   r0, 2         ; Shift left by 2
-shr   r0, 1         ; Shift right by 1
+| CC  | Meaning                    |
+| --- | -------------------------- |
+| EQ  | Equal / Zero               |
+| NE  | Not equal / Not zero       |
+| LT  | Less                       |
+| LE  | Less or equal              |
+| GT  | Greater                    |
+| GE  | Greater or equal           |
+| OV  | Overflow                   |
+| NO  | Not overflow               |
+| S   | Sign                       |
+| NS  | Not sign                   |
+| P   | Parity                     |
+| NP  | Not parity                 |
+| A   | Above (unsigned)           |
+| AE  | Above or equal             |
+| B   | Below (unsigned)           |
+| BE  | Below or equal             |
+
+---
+
+## Stack Operations
+
+```
+push   src        ; Push value to stack
+pop    dest       ; Pop value from stack
+pusha             ; Push all general-purpose registers
+popa              ; Pop all general-purpose registers
+enter  frameSize, nestingLevel  ; Create stack frame
+leave                     ; Delete stack frame
 ```
 
-### Comparison & Conditional Sets
+---
 
-```asm
-cmp   r0, r1        ; Compare two values
-test  r0, r1        ; Bitwise test
-sete  r0            ; Set if equal
-setne r0            ; Set if not equal
-setl  r0            ; Set if less
-setle r0            ; Set if less or equal
-setg  r0            ; Set if greater
-setge r0            ; Set if greater or equal
+## Arithmetic Operations
+
+```
+add    dest, src       ; Addition
+sub    dest, src       ; Subtraction
+mul    dest, src       ; Multiplication
+imul   dest, src       ; Integer multiplication
+div    dest, src       ; Division
+idiv   dest, src       ; Integer division
+mod    dest, src       ; Modulo
+inc    dest            ; Increment
+dec    dest            ; Decrement
+neg    dest            ; Negate
 ```
 
-### Control Flow
+---
 
-```asm
-jmp   label         ; Unconditional jump
-je    label         ; Jump if equal
-jne   label         ; Jump if not equal
-jg    label         ; Jump if greater
-jl    label         ; Jump if less
-jge   label         ; Jump if greater or equal
-jle   label         ; Jump if less or equal
-call  function      ; Call function
-ret                 ; Return from function
+## Logical & Bitwise Operations
+
+```
+and    dest, src       ; Bitwise AND
+or     dest, src       ; Bitwise OR
+xor    dest, src       ; Bitwise XOR
+not    dest            ; Bitwise NOT
+andn   dest, src       ; Bitwise AND NOT
+shl    dest, imm       ; Shift left
+shr    dest, imm       ; Shift right
+sal    dest, imm       ; Arithmetic shift left
+sar    dest, imm       ; Arithmetic shift right
+rol    dest, imm       ; Rotate left
+ror    dest, imm       ; Rotate right
+rcl    dest, imm       ; Rotate through carry left
+rcr    dest, imm       ; Rotate through carry right
+bextr  dest, src, imm  ; Bit extract
+bsf    dest, src       ; Bit scan forward
+bsr    dest, src       ; Bit scan reverse
 ```
 
-### System Calls
+---
 
-System calls use registers for arguments and return values:
+## Comparison & Conditional Sets
 
-```asm
-; Arguments passed in r0, r1, r2, ...
-; Return value in r0
-syscall write       ; Write to file descriptor
-syscall read        ; Read from file descriptor
-syscall exit        ; Exit program
-syscall open        ; Open file
-syscall close       ; Close file descriptor
+```
+cmp    dest, src       ; Compare two values
+test   dest, src       ; Bitwise test
+bt     dest, bit       ; Test bit
+btr    dest, bit       ; Test bit and reset
+bts    dest, bit       ; Test bit and set
+btc    dest, bit       ; Test bit and complement
+setCC  dest            ; Set if condition CC is met
 ```
 
-### Directives
+---
 
-```asm
-global main         ; Export symbol globally
-extern printf       ; Import external symbol
-align 16            ; Align next data to 16-byte boundary
-equ NAME, 123       ; Define named constant
+## String Operations
+
+```
+cmps   src1, src2      ; Compare strings
+scas   src, val        ; Scan string
+stos   dest, src       ; Store string
+lods   dest, src       ; Load string
+movs   dest, src       ; Move string
 ```
 
-### Comments
+---
 
-```asm
-; This is a single-line comment
-mov r0, 42    ; Inline comment
+## Data Conversion
+
 ```
+cbw   dest             ; Convert byte to word
+cwd   dest             ; Convert word to double word
+cdq   dest             ; Convert double word to quad word
+cqo   dest             ; Convert quad word to oct word
+cwde  dest             ; Convert word to double word
+cdqe  dest             ; Convert double word to quad word
+```
+
+---
+
+## Control Flow
+
+```
+jmp    label           ; Unconditional jump
+jCC    label           ; Conditional jump
+loopCC label           ; Loop with condition
+call   label           ; Call function
+ret                     ; Return from function
+```
+
+---
+
+## I/O
+
+```
+in     dest, port       ; Input from port
+out    port, src        ; Output to port
+ins    dest, port       ; Input string from port
+outs   port, src        ; Output string to port
+```
+
+---
+
+## System & CPU Operations
+
+```
+cpuid                   ; CPU identification
+syscall name            ; System call with registers r0, r1... for arguments
+lfence                  ; Load fence
+sfence                  ; Store fence
+mfence                  ; Memory fence
+prefetch addr           ; Prefetch data into cache
+clflush addr            ; Flush cache line
+clwb addr               ; Writeback cache line
+```
+
+---
+
+## Directives
+
+```
+global symbol           ; Export symbol globally
+extern symbol           ; Import external symbol
+align n                 ; Align next data to n-byte boundary
+equ name, value         ; Define named constant
+```
+
+---
+
+## Comments
+
+```
+; Single-line comment
+mov r0, 42   ; Inline comment
+```
+
 
 ---
 

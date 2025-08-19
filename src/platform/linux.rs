@@ -9,6 +9,7 @@ impl PlatformCodeGen for LinuxPlatform {
             Section::Data => ".section .data,\"aw\",@progbits\n".to_string(),
             Section::Bss => ".section .bss,\"aw\",@nobits\n".to_string(),
             Section::Rodata => ".section .rodata,\"a\",@progbits\n".to_string(),
+            Section::Custom(section) => format!(".section .{},\"a\",@progbits\n", section),
         }
     }
 
@@ -23,7 +24,7 @@ impl PlatformCodeGen for LinuxPlatform {
     fn format_data_directive(&self, size: DataSize, name: &str, values: &[String]) -> String {
         let directive = match size {
             DataSize::Byte => ".byte",
-            DataSize::Word => ".2byte", 
+            DataSize::Word => ".2byte",
             DataSize::Dword => ".4byte",
             DataSize::Qword => ".8byte",
         };

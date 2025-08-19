@@ -8,6 +8,7 @@ impl PlatformCodeGen for WindowsPlatform {
             Section::Data => ".section .data,\"rw\"\n".to_string(),
             Section::Bss => ".section .bss,\"rw\"\n".to_string(),
             Section::Rodata => ".section .rdata,\"r\"\n".to_string(),
+            Section::Custom(section) => format!(".section .{},\"r\"\n", section),
         }
     }
 

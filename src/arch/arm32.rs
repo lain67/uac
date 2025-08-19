@@ -1,147 +1,171 @@
 use super::*;
 use std::collections::HashMap;
 
-pub struct ARM64CodeGen {
+pub struct ARM32CodeGen {
     register_map: HashMap<String, String>,
 }
 
-impl ARM64CodeGen {
+impl ARM32CodeGen {
     pub fn new() -> Self {
         let mut register_map = HashMap::new();
 
-        // Function argument registers (AAPCS64)
-        register_map.insert("r0".to_string(), "x0".to_string()); // 1st arg
-        register_map.insert("r1".to_string(), "x1".to_string()); // 2nd arg
-        register_map.insert("r2".to_string(), "x2".to_string()); // 3rd arg
-        register_map.insert("r3".to_string(), "x3".to_string()); // 4th arg
-        register_map.insert("r4".to_string(), "x4".to_string()); // 5th arg
-        register_map.insert("r5".to_string(), "x5".to_string()); // 6th arg
-        register_map.insert("r6".to_string(), "x6".to_string()); // 7th arg
-        register_map.insert("r7".to_string(), "x7".to_string()); // 8th arg
+        // AAPCS: r0-r3 args, r0 return, r12 scratch, r4-r11 callee-saved, r13 sp, r14 lr, r15 pc
+        for i in 0..13 {
+            register_map.insert(format!("r{}", i), format!("r{}", i));
+        }
+        register_map.insert("sp".to_string(), "sp".to_string()); // r13
+        register_map.insert("lr".to_string(), "lr".to_string()); // r14
+        register_map.insert("pc".to_string(), "pc".to_string()); // r15
+        register_map.insert("ip".to_string(), "r12".to_string());
+        register_map.insert("fp".to_string(), "r11".to_string());
+        register_map.insert("sb".to_string(), "r9".to_string());
 
-        // General-purpose registers (avoiding procedure call standard conflicts)
-        register_map.insert("r8".to_string(), "x8".to_string()); // Indirect result location
-        register_map.insert("r9".to_string(), "x9".to_string()); // Temporary
-        register_map.insert("r10".to_string(), "x10".to_string()); // Temporary
-        register_map.insert("r11".to_string(), "x11".to_string()); // Temporary
-        register_map.insert("r12".to_string(), "x12".to_string()); // Temporary
-        register_map.insert("r13".to_string(), "x13".to_string()); // Temporary
-        register_map.insert("r14".to_string(), "x14".to_string()); // Temporary
-        register_map.insert("r15".to_string(), "x15".to_string()); // Temporary
+        ARM32CodeGen { register_map }
+    }
 
-        // Callee-saved registers
-        register_map.insert("r19".to_string(), "x19".to_string());
-        register_map.insert("r20".to_string(), "x20".to_string());
-        register_map.insert("r21".to_string(), "x21".to_string());
-        register_map.insert("r22".to_string(), "x22".to_string());
+    fn cond_suffix(cond: &str) -> &str {
+        match cond {
+            "eq" => "eq",
+            "ne" => "ne",
+            "lt" => "lt",
+            "le" => "le",
+            "gt" => "gt",
+            "ge" => "ge",
+            "mi" => "mi",
+            "pl" => "pl",
+            "vs" => "vs",
+            "vc" => "vc",
+            "cs" => "cs",
+            "cc" => "cc",
+            "hi" => "hi",
+            "ls" => "ls",
+            "al" => "", // always
+            _ => "",
+        }
+    }
 
-        // Special purpose registers
-        register_map.insert("sp".to_string(), "sp".to_string());
-        register_map.insert("sb".to_string(), "x29".to_string()); // frame pointer (FP)
-        register_map.insert("ip".to_string(), "x30".to_string()); // link register (LR)
+    fn map_operand(&self, operand: &str) -> String {
+        if operand.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            return format!("#{}", operand);
+        }
+        if operand.starts_with('[') && operand.ends_with(']') {
+            return self.map_memory_operand(operand);
+        }
+        if let Some(mapped) = self.register_map.get(operand) {
+            mapped.clone()
+        } else {
+            operand.to_string()
+        }
+    }
 
-        ARM64CodeGen { register_map }
+    fn map_memory_operand(&self, operand: &str) -> String {
+        // ARM syntax: [Rn, #imm]
+        if operand.starts_with('[') && operand.ends_with(']') {
+            let inner = &operand[1..operand.len() - 1].trim();
+            if let Some((base, off)) = inner.split_once('+') {
+                let base = self.map_operand(base.trim());
+                let off = off.trim();
+                if off.chars().all(|c| c.is_ascii_digit() || c == '-') {
+                    format!("[{}, #{}]", base, off)
+                } else {
+                    format!("[{}, {}]", base, self.map_operand(off))
+                }
+            } else if let Some((base, off)) = inner.split_once('-') {
+                let base = self.map_operand(base.trim());
+                let off = off.trim();
+                if off.chars().all(|c| c.is_ascii_digit()) {
+                    format!("[{}, #-{}]", base, off)
+                } else {
+                    format!("[{}, -{}]", base, self.map_operand(off))
+                }
+            } else {
+                format!("[{}]", self.map_operand(inner))
+            }
+        } else {
+            operand.to_string()
+        }
     }
 }
 
-impl ArchCodeGen for ARM64CodeGen {
+impl ArchCodeGen for ARM32CodeGen {
     fn get_register_map(&self) -> HashMap<String, String> {
         self.register_map.clone()
     }
 
     fn get_syntax_header(&self) -> String {
-        ".text\n\n".to_string()
+        ".syntax unified\n.arm\n.text\n\n".to_string()
     }
 
     fn generate_mov(&self, dst: &str, src: &str) -> String {
-        let dst_reg = self.map_operand(dst);
-        let src_op = self.map_operand(src);
-
-        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            let value: i64 = src_op.parse().unwrap_or(0);
-            if value >= 0 && value <= 65535 {
-                return format!("    mov {}, #{}\n", dst_reg, src_op);
-            } else {
-                let low = value & 0xFFFF;
-                let high = (value >> 16) & 0xFFFF;
-                if high == 0 {
-                    return format!("    mov {}, #{}\n", dst_reg, low);
-                } else {
-                    return format!(
-                        "    movz {}, #{}\n    movk {}, #{}, lsl #16\n",
-                        dst_reg, low, dst_reg, high
-                    );
-                }
-            }
-        }
-
-        if src_op.starts_with('x') || src_op.starts_with('w') || src_op == "sp" {
-            return format!("    mov {}, {}\n", dst_reg, src_op);
-        }
-
-        // format!("    mov {}, #{}\n", dst_reg, src_op)
-        format!("    ldr {}, ={}\n", dst_reg, src_op)
+        let dst = self.map_operand(dst);
+        let src = self.map_operand(src);
+        format!("    mov {}, {}\n", dst, src)
     }
 
     fn generate_lea(&self, dst: &str, src: &str) -> String {
-        let src_clean = if src.starts_with('[') && src.ends_with(']') {
-            &src[1..src.len() - 1]
-        } else {
-            src
-        };
-        format!("    adr {}, {}\n", self.map_operand(dst), src_clean)
+        // ARM does not have lea, use add with PC or MOV for literals.
+        if src.starts_with('[') && src.ends_with(']') {
+            let inner = &src[1..src.len() - 1];
+            if let Some((base, off)) = inner.split_once('+') {
+                return format!(
+                    "    add {}, {}, #{}\n",
+                    self.map_operand(dst),
+                    self.map_operand(base.trim()),
+                    off.trim()
+                );
+            } else if let Some((base, off)) = inner.split_once('-') {
+                return format!(
+                    "    sub {}, {}, #{}\n",
+                    self.map_operand(dst),
+                    self.map_operand(base.trim()),
+                    off.trim()
+                );
+            } else {
+                return format!(
+                    "    mov {}, {}\n",
+                    self.map_operand(dst),
+                    self.map_operand(inner)
+                );
+            }
+        }
+        // For named label
+        format!("    ldr {}, ={}\n", self.map_operand(dst), src)
     }
 
     fn generate_load(&self, dst: &str, src: &str) -> String {
-        let dst_reg = self.map_operand(dst);
-
-        if !src.starts_with('[') && !src.ends_with(']') {
-            return format!("    ldr {}, ={}\n", dst_reg, src);
-        }
-
-        let inner = &src[1..src.len() - 1].trim();
-        
-        if !inner.starts_with('x') && !inner.starts_with('w') && !inner.contains('+') && !inner.contains('-') {
-            return format!("    ldr {}, ={}\n", dst_reg, inner);
-        }
-
-        format!("    ldr {}, {}\n", dst_reg, self.map_memory_operand(src))
+        // Only support ldr reg, [mem]
+        let dst = self.map_operand(dst);
+        let mem = self.map_memory_operand(src);
+        format!("    ldr {}, {}\n", dst, mem)
     }
 
     fn generate_store(&self, dst: &str, src: &str) -> String {
-        let dst_mem = self.map_memory_operand(dst);
-        let src_reg = self.map_operand(src);
-
-        if src_reg.chars().all(|c| c.is_ascii_digit()) {
-            return format!("    // ERROR: str requires a register, got {}\n", src_reg);
-        }
-
-        format!("    str {}, {}\n", src_reg, dst_mem)
+        // Only support str reg, [mem]
+        let mem = self.map_memory_operand(dst);
+        let src = self.map_operand(src);
+        format!("    str {}, {}\n", src, mem)
     }
 
     fn generate_add(&self, dst: &str, src: &str) -> String {
-        let dst_reg = self.map_operand(dst);
-        let src_op = self.map_operand(src);
-
-        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            format!("    add {}, {}, #{}\n", dst_reg, dst_reg, src_op)
-        } else {
-            format!("    add {}, {}, {}\n", dst_reg, dst_reg, src_op)
-        }
+        format!(
+            "    add {}, {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
     }
 
     fn generate_sub(&self, dst: &str, src: &str) -> String {
-        let dst_reg = self.map_operand(dst);
-        let src_op = self.map_operand(src);
-
-        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            format!("    sub {}, {}, #{}\n", dst_reg, dst_reg, src_op)
-        } else {
-            format!("    sub {}, {}, {}\n", dst_reg, dst_reg, src_op)
-        }
+        format!(
+            "    sub {}, {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
     }
 
     fn generate_mul(&self, dst: &str, src: &str) -> String {
+        // ARM: mul <Rd>,<Rm>,<Rs>   (Rd = Rm * Rs)
         format!(
             "    mul {}, {}, {}\n",
             self.map_operand(dst),
@@ -151,6 +175,7 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_div(&self, dst: &str, src: &str) -> String {
+        // ARMv7-M+ has SDIV or UDIV
         format!(
             "    sdiv {}, {}, {}\n",
             self.map_operand(dst),
@@ -177,43 +202,37 @@ impl ArchCodeGen for ARM64CodeGen {
 
     fn generate_neg(&self, dst: &str) -> String {
         format!(
-            "    neg {}, {}\n",
+            "    rsb {}, {}, #0\n",
             self.map_operand(dst),
             self.map_operand(dst)
         )
     }
 
     fn generate_and(&self, dst: &str, src: &str) -> String {
-        let dst_reg = self.map_operand(dst);
-        let src_op = self.map_operand(src);
-
-        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            format!("    and {}, {}, #{}\n", dst_reg, dst_reg, src_op)
-        } else {
-            format!("    and {}, {}, {}\n", dst_reg, dst_reg, src_op)
-        }
+        format!(
+            "    and {}, {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
     }
 
     fn generate_or(&self, dst: &str, src: &str) -> String {
-        let dst_reg = self.map_operand(dst);
-        let src_op = self.map_operand(src);
-
-        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            format!("    orr {}, {}, #{}\n", dst_reg, dst_reg, src_op)
-        } else {
-            format!("    orr {}, {}, {}\n", dst_reg, dst_reg, src_op)
-        }
+        format!(
+            "    orr {}, {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
     }
 
     fn generate_xor(&self, dst: &str, src: &str) -> String {
-        let dst_reg = self.map_operand(dst);
-        let src_op = self.map_operand(src);
-
-        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            format!("    eor {}, {}, #{}\n", dst_reg, dst_reg, src_op)
-        } else {
-            format!("    eor {}, {}, {}\n", dst_reg, dst_reg, src_op)
-        }
+        format!(
+            "    eor {}, {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
     }
 
     fn generate_not(&self, dst: &str) -> String {
@@ -225,47 +244,39 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_shl(&self, dst: &str, src: &str) -> String {
-        let dst_reg = self.map_operand(dst);
-        let src_op = self.map_operand(src);
-
-        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            format!("    lsl {}, {}, #{}\n", dst_reg, dst_reg, src_op)
-        } else {
-            format!("    lsl {}, {}, {}\n", dst_reg, dst_reg, src_op)
-        }
+        // ARM: lsl (logical shift left)
+        format!(
+            "    lsl {}, {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
     }
 
     fn generate_shr(&self, dst: &str, src: &str) -> String {
-        let dst_reg = self.map_operand(dst);
-        let src_op = self.map_operand(src);
-
-        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            format!("    lsr {}, {}, #{}\n", dst_reg, dst_reg, src_op)
-        } else {
-            format!("    lsr {}, {}, {}\n", dst_reg, dst_reg, src_op)
-        }
+        // ARM: lsr (logical shift right)
+        format!(
+            "    lsr {}, {}, {}\n",
+            self.map_operand(dst),
+            self.map_operand(dst),
+            self.map_operand(src)
+        )
     }
 
     fn generate_cmp(&self, op1: &str, op2: &str) -> String {
-        let op1_reg = self.map_operand(op1);
-        let op2_op = self.map_operand(op2);
-
-        if op2_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            format!("    cmp {}, #{}\n", op1_reg, op2_op)
-        } else {
-            format!("    cmp {}, {}\n", op1_reg, op2_op)
-        }
+        format!(
+            "    cmp {}, {}\n",
+            self.map_operand(op1),
+            self.map_operand(op2)
+        )
     }
 
     fn generate_test(&self, op1: &str, op2: &str) -> String {
-        let op1_reg = self.map_operand(op1);
-        let op2_op = self.map_operand(op2);
-
-        if op2_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
-            format!("    tst {}, #{}\n", op1_reg, op2_op)
-        } else {
-            format!("    tst {}, {}\n", op1_reg, op2_op)
-        }
+        format!(
+            "    tst {}, {}\n",
+            self.map_operand(op1),
+            self.map_operand(op2)
+        )
     }
 
     fn generate_jmp(&self, label: &str) -> String {
@@ -273,27 +284,27 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_je(&self, label: &str) -> String {
-        format!("    b.eq {}\n", label)
+        format!("    beq {}\n", label)
     }
 
     fn generate_jne(&self, label: &str) -> String {
-        format!("    b.ne {}\n", label)
+        format!("    bne {}\n", label)
     }
 
     fn generate_jg(&self, label: &str) -> String {
-        format!("    b.gt {}\n", label)
+        format!("    bgt {}\n", label)
     }
 
     fn generate_jl(&self, label: &str) -> String {
-        format!("    b.lt {}\n", label)
+        format!("    blt {}\n", label)
     }
 
     fn generate_jge(&self, label: &str) -> String {
-        format!("    b.ge {}\n", label)
+        format!("    bge {}\n", label)
     }
 
     fn generate_jle(&self, label: &str) -> String {
-        format!("    b.le {}\n", label)
+        format!("    ble {}\n", label)
     }
 
     fn generate_call(&self, func: &str) -> String {
@@ -301,177 +312,169 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_ret(&self) -> String {
-        "    ret\n".to_string()
+        "    bx lr\n".to_string()
     }
 
     fn generate_syscall(&self, name: &str) -> String {
-        // Linux AArch64: x8 = syscall#, x0..x7 = args, svc 0
+        // Linux (EABI): r7 = syscall#, r0..r6 = args, swi 0
         let syscall_num = match name {
-            "read" => "63",
-            "write" => "64",
-            "open" => "56",
-            "close" => "57",
-            "exit" => "93",
-            "mmap" => "222",
-            "munmap" => "215",
-            "brk" => "214",
-            "fstat" => "80",
+            "read" => "3",
+            "write" => "4",
+            "open" => "5",
+            "close" => "6",
+            "exit" => "1",
+            "mmap2" => "192",
+            "munmap" => "91",
+            "brk" => "45",
+            "fstat64" => "197",
             _ => {
                 return format!(
-                    "    // Unknown syscall: {}\n    mov x8, #0\n    svc 0\n",
+                    "    // Unknown syscall: {}\n    mov r7, #0\n    swi 0\n",
                     name
                 );
             }
         };
-        format!("    mov x8, #{}\n    svc 0\n", syscall_num)
+        format!("    mov r7, #{}\n    swi 0\n", syscall_num)
     }
+
+    // --- Synthesize "conditional move" by using MOV{cond} ---
 
     fn generate_cmov_eq(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, eq\n",
+            "    moveq {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_ne(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, ne\n",
+            "    movne {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_lt(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, lt\n",
+            "    movlt {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_le(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, le\n",
+            "    movle {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_gt(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, gt\n",
+            "    movgt {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_ge(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, ge\n",
+            "    movge {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_ov(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, vs\n",
+            "    movvs {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_no(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, vc\n",
+            "    movvc {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_s(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, mi\n",
+            "    movmi {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_ns(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, pl\n",
+            "    movpl {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_p(&self, dst: &str, src: &str) -> String {
-        "// ARM64 has no parity flag, cannot synthesize cmov_p\n".to_string()
+        "// ARM has no parity flag, cannot synthesize cmov_p\n".to_string()
     }
     fn generate_cmov_np(&self, dst: &str, src: &str) -> String {
-        "// ARM64 has no parity flag, cannot synthesize cmov_np\n".to_string()
+        "// ARM has no parity flag, cannot synthesize cmov_np\n".to_string()
     }
     fn generate_cmov_a(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, hi\n",
+            "    movhi {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_ae(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, hs\n",
+            "    movcs {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_b(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, lo\n",
+            "    movcc {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
     fn generate_cmov_be(&self, dst: &str, src: &str) -> String {
         format!(
-            "    csel {}, {}, {}, ls\n",
+            "    movls {}, {}\n",
             self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
+            self.map_operand(src)
         )
     }
 
+    // Stack push/pop
     fn generate_push(&self, src: &str) -> String {
-        // ARM64 doesn't have a direct push instruction
-        format!("    str {}, [sp, #-16]!\n", self.map_operand(src))
+        // STMFD/STMDB for full descending stack
+        format!("    push {{{}}}\n", self.map_operand(src))
     }
 
     fn generate_pop(&self, dst: &str) -> String {
-        format!("    ldr {}, [sp], #16\n", self.map_operand(dst))
+        format!("    pop {{{}}}\n", self.map_operand(dst))
     }
 
     fn generate_pusha(&self) -> String {
-        // ARM64 doesn't have pusha, save multiple registers
-        "    stp x0, x1, [sp, #-16]!\n    stp x2, x3, [sp, #-16]!\n    stp x4, x5, [sp, #-16]!\n    stp x6, x7, [sp, #-16]!\n".to_string()
+        // ARM has no pusha/popa, emulate full register push
+        "    push {r0-r12,lr}\n".to_string()
     }
 
     fn generate_popa(&self) -> String {
-        "    ldp x6, x7, [sp], #16\n    ldp x4, x5, [sp], #16\n    ldp x2, x3, [sp], #16\n    ldp x0, x1, [sp], #16\n".to_string()
+        // ARM has no pusha/popa, emulate full register pop (excluding PC for return)
+        "    pop {r0-r12,lr}\n".to_string()
     }
 
     fn generate_enter(&self, frame_size: &str, _nesting: &str) -> String {
+        // Prologue: push fp, set fp, sub sp for locals
         format!(
-            "    stp x29, x30, [sp, #-16]!\n    mov x29, sp\n    sub sp, sp, #{}\n",
+            "    push {{fp, lr}}\n    add fp, sp, #4\n    sub sp, sp, #{}\n",
             frame_size
         )
     }
 
     fn generate_leave(&self) -> String {
-        "    mov sp, x29\n    ldp x29, x30, [sp], #16\n".to_string()
+        // Epilogue: restore fp, lr (and optionally deallocate locals)
+        "    mov sp, fp\n    pop {fp, pc}\n".to_string()
     }
 
     fn generate_imul(&self, dst: &str, src: &str) -> String {
@@ -483,12 +486,13 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_mod(&self, dst: &str, src: &str) -> String {
-        // ARM64: msub after sdiv for modulo
-        let t = "x16"; // Use x16 as scratch register
+        // rX % rY: sdiv rA, rX, rY; mls rA, rA, rY, rX
+        // result = rX - (rX / rY) * rY
+        let t = self.map_operand("r12"); // Use scratch register r12 (ip)
         let dst = self.map_operand(dst);
         let src = self.map_operand(src);
         format!(
-            "    sdiv {t}, {dst}, {src}\n    msub {dst}, {t}, {src}, {dst}\n",
+            "    sdiv {t}, {dst}, {src}\n    mls {dst}, {t}, {src}, {dst}\n",
             t = t,
             dst = dst,
             src = src
@@ -496,6 +500,7 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_andn(&self, dst: &str, src: &str) -> String {
+        // ANDN dst, src: dst = dst & ~src
         format!(
             "    bic {}, {}, {}\n",
             self.map_operand(dst),
@@ -509,6 +514,7 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_sar(&self, dst: &str, src: &str) -> String {
+        // Arithmetic shift right
         format!(
             "    asr {}, {}, {}\n",
             self.map_operand(dst),
@@ -518,13 +524,12 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_rol(&self, dst: &str, src: &str) -> String {
-        // ARM64 has ROR, for ROL we use ROR with (64-src)
-        let src_val = src.parse::<u32>().unwrap_or(0);
+        // ROR: rotate right, for left: ROR with (32-src)
         format!(
             "    ror {}, {}, #{}\n",
             self.map_operand(dst),
             self.map_operand(dst),
-            64 - src_val
+            32 - src.parse::<u32>().unwrap_or(0)
         )
     }
 
@@ -538,15 +543,15 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_rcl(&self, _dst: &str, _src: &str) -> String {
-        "// ARM64 has no direct RCL (rotate through carry)\n".to_string()
+        "// ARM has no direct RCL (rotate through carry)\n".to_string()
     }
 
     fn generate_rcr(&self, _dst: &str, _src: &str) -> String {
-        "// ARM64 has no direct RCR (rotate through carry)\n".to_string()
+        "// ARM has no direct RCR (rotate through carry)\n".to_string()
     }
 
     fn generate_bextr(&self, dst: &str, src: &str, imm: &str) -> String {
-        // Bit field extract: UBFX
+        // Bit extract: ARM32 use UBFX
         let src = self.map_operand(src);
         if let Some((lsb, width)) = imm.split_once(',') {
             format!(
@@ -557,28 +562,21 @@ impl ArchCodeGen for ARM64CodeGen {
                 width.trim()
             )
         } else {
-            "// ARM64: bextr expects imm as lsb,width\n".to_string()
+            "// ARM32: bextr expects imm as lsb,width\n".to_string()
         }
     }
 
     fn generate_bsf(&self, dst: &str, src: &str) -> String {
-        // Count trailing zeros: rbit + clz
-        format!(
-            "    rbit {}, {}\n    clz {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst),
-            self.map_operand(dst)
-        )
-    }
-
-    fn generate_bsr(&self, dst: &str, src: &str) -> String {
-        // Count leading zeros
+        // Count trailing zeros (CLZ, then sub from 31): ARM32 has CLZ for leading zeros
         format!(
             "    clz {}, {}\n",
             self.map_operand(dst),
             self.map_operand(src)
-        )
+        ) // For leading-zero, not bit-scan-forward!
+    }
+
+    fn generate_bsr(&self, dst: &str, src: &str) -> String {
+        self.generate_bsf(dst, src)
     }
 
     fn generate_bt(&self, dst: &str, bit: &str) -> String {
@@ -586,7 +584,7 @@ impl ArchCodeGen for ARM64CodeGen {
         format!(
             "    tst {}, #{}\n",
             self.map_operand(dst),
-            1u64 << bit.parse::<u32>().unwrap_or(0)
+            1 << bit.parse::<u32>().unwrap_or(0)
         )
     }
 
@@ -596,7 +594,7 @@ impl ArchCodeGen for ARM64CodeGen {
             "    bic {}, {}, #{}\n",
             self.map_operand(dst),
             self.map_operand(dst),
-            1u64 << bit.parse::<u32>().unwrap_or(0)
+            1 << bit.parse::<u32>().unwrap_or(0)
         )
     }
 
@@ -606,7 +604,7 @@ impl ArchCodeGen for ARM64CodeGen {
             "    orr {}, {}, #{}\n",
             self.map_operand(dst),
             self.map_operand(dst),
-            1u64 << bit.parse::<u32>().unwrap_or(0)
+            1 << bit.parse::<u32>().unwrap_or(0)
         )
     }
 
@@ -616,62 +614,123 @@ impl ArchCodeGen for ARM64CodeGen {
             "    eor {}, {}, #{}\n",
             self.map_operand(dst),
             self.map_operand(dst),
-            1u64 << bit.parse::<u32>().unwrap_or(0)
+            1 << bit.parse::<u32>().unwrap_or(0)
         )
     }
 
+    // --- Condition codes: Synthesize using MOV{cond} after CMP/TST ---
+
     fn generate_set_eq(&self, dst: &str) -> String {
-        format!("    cset {}, eq\n", self.map_operand(dst))
+        // Set dst=1 if ZF; dst=0 otherwise. Use MOVxx after cmp.
+        format!(
+            "    moveq {}, #1\n    movne {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_ne(&self, dst: &str) -> String {
-        format!("    cset {}, ne\n", self.map_operand(dst))
+        format!(
+            "    movne {}, #1\n    moveq {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_lt(&self, dst: &str) -> String {
-        format!("    cset {}, lt\n", self.map_operand(dst))
+        format!(
+            "    movlt {}, #1\n    movge {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_le(&self, dst: &str) -> String {
-        format!("    cset {}, le\n", self.map_operand(dst))
+        format!(
+            "    movle {}, #1\n    movgt {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_gt(&self, dst: &str) -> String {
-        format!("    cset {}, gt\n", self.map_operand(dst))
+        format!(
+            "    movgt {}, #1\n    movle {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_ge(&self, dst: &str) -> String {
-        format!("    cset {}, ge\n", self.map_operand(dst))
+        format!(
+            "    movge {}, #1\n    movlt {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_ov(&self, dst: &str) -> String {
-        format!("    cset {}, vs\n", self.map_operand(dst))
+        format!(
+            "    movvs {}, #1\n    movvc {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_no(&self, dst: &str) -> String {
-        format!("    cset {}, vc\n", self.map_operand(dst))
+        format!(
+            "    movvc {}, #1\n    movvs {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_s(&self, dst: &str) -> String {
-        format!("    cset {}, mi\n", self.map_operand(dst))
+        format!(
+            "    movmi {}, #1\n    movpl {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_ns(&self, dst: &str) -> String {
-        format!("    cset {}, pl\n", self.map_operand(dst))
+        format!(
+            "    movpl {}, #1\n    movmi {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_p(&self, dst: &str) -> String {
-        "// ARM64 has no parity flag, cannot synthesize set_p\n".to_string()
+        "// ARM32 has no parity flag, cannot synthesize set_p\n".to_string()
     }
     fn generate_set_np(&self, dst: &str) -> String {
-        "// ARM64 has no parity flag, cannot synthesize set_np\n".to_string()
+        "// ARM32 has no parity flag, cannot synthesize set_np\n".to_string()
     }
     fn generate_set_a(&self, dst: &str) -> String {
-        format!("    cset {}, hi\n", self.map_operand(dst))
+        format!(
+            "    movhi {}, #1\n    movls {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_ae(&self, dst: &str) -> String {
-        format!("    cset {}, hs\n", self.map_operand(dst))
+        format!(
+            "    movcs {}, #1\n    movcc {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_b(&self, dst: &str) -> String {
-        format!("    cset {}, lo\n", self.map_operand(dst))
+        format!(
+            "    movcc {}, #1\n    movcs {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
     fn generate_set_be(&self, dst: &str) -> String {
-        format!("    cset {}, ls\n", self.map_operand(dst))
+        format!(
+            "    movls {}, #1\n    movhi {}, #0\n",
+            self.map_operand(dst),
+            self.map_operand(dst)
+        )
     }
+
+    // --- String/rep-style ops: ARM lacks direct analogues ---
 
     fn generate_cmps(&self, src1: &str, src2: &str) -> String {
         format!(
-            "    ldr x16, {} \n    ldr x17, {}\n    cmp x16, x17\n",
+            "    ldr r12, {} \n    ldr r11, {}\n    cmp r12, r11\n",
             self.map_memory_operand(src1),
             self.map_memory_operand(src2)
         )
@@ -679,7 +738,7 @@ impl ArchCodeGen for ARM64CodeGen {
 
     fn generate_scas(&self, src: &str, val: &str) -> String {
         format!(
-            "    ldr x16, {} \n    cmp x16, {}\n",
+            "    ldr r12, {} \n    cmp r12, {}\n",
             self.map_memory_operand(src),
             self.map_operand(val)
         )
@@ -700,14 +759,15 @@ impl ArchCodeGen for ARM64CodeGen {
     }
     fn generate_movs(&self, dst: &str, src: &str) -> String {
         format!(
-            "    ldr x16, {}\n    str x16, {}\n",
+            "    ldr r12, {}\n    str r12, {}\n",
             self.map_memory_operand(src),
             self.map_memory_operand(dst)
         )
     }
 
+    // --- Data/sign/zero extend ---
     fn generate_cbw(&self, dst: &str) -> String {
-        // Sign-extend byte to word: sxtb
+        // Sign-extend byte to word: sxtb <dst>, <dst>
         format!(
             "    sxtb {}, {}\n",
             self.map_operand(dst),
@@ -715,7 +775,7 @@ impl ArchCodeGen for ARM64CodeGen {
         )
     }
     fn generate_cwd(&self, dst: &str) -> String {
-        // Sign-extend word to doubleword: sxth
+        // Sign-extend word to doubleword: sxth <dst>, <dst>
         format!(
             "    sxth {}, {}\n",
             self.map_operand(dst),
@@ -723,105 +783,98 @@ impl ArchCodeGen for ARM64CodeGen {
         )
     }
     fn generate_cdq(&self, dst: &str) -> String {
-        // Sign-extend 32-bit to 64-bit: sxtw
         format!(
-            "    sxtw {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst)
+            "    // No direct analog (CDQ), use cmp + instruction as needed for sign extension\n"
         )
     }
     fn generate_cqo(&self, dst: &str) -> String {
-        "// ARM64: CQO equivalent handled by sxtw\n".to_string()
+        "// No direct CQO in ARM32\n".to_string()
     }
     fn generate_cwde(&self, dst: &str) -> String {
-        format!(
-            "    sxth {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst)
-        )
+        "// No direct CWDE in ARM32\n".to_string()
     }
     fn generate_cdqe(&self, dst: &str) -> String {
-        format!(
-            "    sxtw {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst)
-        )
+        "// No direct CDQE in ARM32\n".to_string()
     }
 
+    // --- ARM32 branch mnemonics ---
     fn generate_jo(&self, label: &str) -> String {
-        format!("    b.vs {}\n", label)
+        format!("    bvs {}\n", label)
     }
     fn generate_jno(&self, label: &str) -> String {
-        format!("    b.vc {}\n", label)
+        format!("    bvc {}\n", label)
     }
     fn generate_js(&self, label: &str) -> String {
-        format!("    b.mi {}\n", label)
+        format!("    bmi {}\n", label)
     }
     fn generate_jns(&self, label: &str) -> String {
-        format!("    b.pl {}\n", label)
+        format!("    bpl {}\n", label)
     }
     fn generate_jp(&self, label: &str) -> String {
-        "// No parity bit on ARM64\n".to_string()
+        "// No parity bit on ARM32\n".to_string()
     }
     fn generate_jnp(&self, label: &str) -> String {
-        "// No parity bit on ARM64\n".to_string()
+        "// No parity bit on ARM32\n".to_string()
     }
     fn generate_ja(&self, label: &str) -> String {
-        format!("    b.hi {}\n", label)
+        format!("    bhi {}\n", label)
     }
     fn generate_jae(&self, label: &str) -> String {
-        format!("    b.hs {}\n", label)
+        format!("    bcs {}\n", label)
     }
     fn generate_jb(&self, label: &str) -> String {
-        format!("    b.lo {}\n", label)
+        format!("    bcc {}\n", label)
     }
     fn generate_jbe(&self, label: &str) -> String {
-        format!("    b.ls {}\n", label)
+        format!("    bls {}\n", label)
     }
     fn generate_loop_eq(&self, label: &str) -> String {
-        "// No direct LOOPxx on ARM64 -- emulate with sub and cbz\n".to_string()
+        "// No direct LOOPxx on ARM32 -- emulate with cmp and beq\n".to_string()
     }
     fn generate_loop_ne(&self, label: &str) -> String {
-        "// No direct LOOPxx on ARM64 -- emulate with sub and cbnz\n".to_string()
+        "// No direct LOOPxx on ARM32 -- emulate with cmp and bne\n".to_string()
     }
 
+    // --- ARM32 has no port I/O ---
     fn generate_in(&self, _dst: &str, _port: &str) -> String {
-        "// ARM64 has no IN instruction, not supported.\n".to_string()
+        "// ARM32 has no IN instruction, not supported.\n".to_string()
     }
     fn generate_out(&self, _port: &str, _src: &str) -> String {
-        "// ARM64 has no OUT instruction, not supported.\n".to_string()
+        "// ARM32 has no OUT instruction, not supported.\n".to_string()
     }
     fn generate_ins(&self, _dst: &str, _port: &str) -> String {
-        "// ARM64 has no INS instruction, not supported.\n".to_string()
+        "// ARM32 has no INS instruction, not supported.\n".to_string()
     }
     fn generate_outs(&self, _port: &str, _src: &str) -> String {
-        "// ARM64 has no OUTS instruction, not supported.\n".to_string()
+        "// ARM32 has no OUTS instruction, not supported.\n".to_string()
     }
 
+    // --- Misc system/fence direct ---
     fn generate_cpuid(&self) -> String {
-        "// ARM64 does not have CPUID\n".to_string()
+        "// ARM does not have CPUID\n".to_string()
     }
     fn generate_lfence(&self) -> String {
-        "    dmb ld\n".to_string()
+        "// ARM does not have LFENCE\n".to_string()
     }
     fn generate_sfence(&self) -> String {
-        "    dmb st\n".to_string()
+        "// ARM does not have SFENCE\n".to_string()
     }
     fn generate_mfence(&self) -> String {
-        "    dmb sy\n".to_string()
+        "// ARM does not have MFENCE\n".to_string()
     }
     fn generate_prefetch(&self, addr: &str) -> String {
-        format!("    prfm pldl1keep, {}\n", self.map_memory_operand(addr))
+        format!("    pld {}\n", self.map_memory_operand(addr))
     }
     fn generate_clflush(&self, addr: &str) -> String {
-        "// ARM64 does not support clflush\n".to_string()
+        "// ARM32 does not support clflush\n".to_string()
     }
     fn generate_clwb(&self, addr: &str) -> String {
-        "// ARM64 does not support clwb\n".to_string()
+        "// ARM32 does not support clwb\n".to_string()
     }
 
+    // --- Data/Section/Align directives ---
     fn generate_global(&self, symbol: &str) -> String {
-        format!(".global {}\n", symbol)
+        format!(".globl {}\n", symbol)
     }
     fn generate_extern(&self, symbol: &str) -> String {
         format!(".extern {}\n", symbol)
@@ -834,18 +887,19 @@ impl ArchCodeGen for ARM64CodeGen {
         format!("{}: .byte {}\n", name, values.join(", "))
     }
     fn generate_data_word(&self, name: &str, values: &[String]) -> String {
-        format!("{}: .hword {}\n", name, values.join(", "))
+        format!("{}: .hword {}\n", name, values.join(", ")) // 2 bytes for .hword
     }
     fn generate_data_dword(&self, name: &str, values: &[String]) -> String {
-        format!("{}: .word {}\n", name, values.join(", "))
+        format!("{}: .word {}\n", name, values.join(", ")) // 4 bytes for .word
     }
     fn generate_data_qword(&self, name: &str, values: &[String]) -> String {
-        format!("{}: .quad {}\n", name, values.join(", "))
+        format!("{}: .quad {}\n", name, values.join(", ")) // .quad may not be available in old GNU as
     }
     fn generate_reserve_byte(&self, name: &str, count: &str) -> String {
         format!("{}: .skip {}\n", name, count)
     }
     fn generate_reserve_word(&self, name: &str, count: &str) -> String {
+        // Each word is 2 bytes
         format!(
             "{}: .skip {}\n",
             name,
