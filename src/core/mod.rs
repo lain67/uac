@@ -12,75 +12,22 @@ pub struct TargetTriple {
 }
 
 impl TargetTriple {
-    pub fn linux_amd64() -> Self {
-        TargetTriple {
-            architecture: Architecture::AMD64,
-            platform: Platform::Linux,
-            format: Format::ELF,
-        }
-    }
+    /// Generic constructor that picks the correct binary format
+    pub fn new(architecture: Architecture, platform: Platform) -> Self {
+        let format = match platform {
+            Platform::Linux => Format::ELF,
+            Platform::BSD => Format::ELF,
+            Platform::Solaris => Format::ELF,
+            Platform::Windows => Format::COFF,
+            Platform::MacOS => Format::MachO,
+            Platform::DOS => Format::MZ,
+            Platform::Embedded => Format::ELF, // most toolchains emit ELF for bare metal
+        };
 
-    pub fn linux_arm64() -> Self {
         TargetTriple {
-            architecture: Architecture::ARM64,
-            platform: Platform::Linux,
-            format: Format::ELF,
-        }
-    }
-
-    pub fn linux_riscv64() -> Self {
-        TargetTriple {
-            architecture: Architecture::RISCV,
-            platform: Platform::Linux,
-            format: Format::ELF,
-        }
-    }
-
-    pub fn windows_amd64() -> Self {
-        TargetTriple {
-            architecture: Architecture::AMD64,
-            platform: Platform::Windows,
-            format: Format::COFF,
-        }
-    }
-
-    pub fn windows_arm64() -> Self {
-        TargetTriple {
-            architecture: Architecture::ARM64,
-            platform: Platform::Windows,
-            format: Format::COFF,
-        }
-    }
-
-    pub fn windows_riscv64() -> Self {
-        TargetTriple {
-            architecture: Architecture::RISCV,
-            platform: Platform::Windows,
-            format: Format::COFF,
-        }
-    }
-
-    pub fn macos_amd64() -> Self {
-        TargetTriple {
-            architecture: Architecture::AMD64,
-            platform: Platform::MacOS,
-            format: Format::MachO,
-        }
-    }
-
-    pub fn macos_arm64() -> Self {
-        TargetTriple {
-            architecture: Architecture::ARM64,
-            platform: Platform::MacOS,
-            format: Format::MachO,
-        }
-    }
-
-    pub fn macos_riscv64() -> Self {
-        TargetTriple {
-            architecture: Architecture::RISCV,
-            platform: Platform::MacOS,
-            format: Format::MachO,
+            architecture,
+            platform,
+            format,
         }
     }
 }

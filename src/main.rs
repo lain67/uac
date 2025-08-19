@@ -5,6 +5,7 @@ use std::env;
 use std::fs;
 use std::process;
 
+use crate::arch::parse_target;
 use crate::core::TargetTriple;
 use crate::core::codegen::CodeGenerator;
 use crate::core::parser::Parser;
@@ -19,7 +20,7 @@ fn main() {
 
     let input_file = &args[1];
     let mut output_file = "output.s".to_string();
-    let mut architecture = TargetTriple::linux_amd64();
+    let mut architecture = TargetTriple::new(arch::Architecture::AMD64, platform::Platform::Linux);
 
     let mut i = 2;
     while i < args.len() {
@@ -35,24 +36,15 @@ fn main() {
             }
             "-t" => {
                 if i + 1 < args.len() {
-                    architecture = match args[i + 1].as_str() {
-                        "x86_64_linux" | "amd64_linux" => TargetTriple::linux_amd64(),
-                        "arm64_linux" | "aarch64_linux" => TargetTriple::linux_arm64(),
-                        // "riscv64_linux" => TargetTriple::linux_riscv64(),
-                        "x86_64_windows" | "amd64_windows" => TargetTriple::windows_amd64(),
-                        "arm64_windows" | "aarch64_windows" => TargetTriple::windows_arm64(),
-                        // "riscv64_windows" => TargetTriple::windows_riscv64(),
-                        "x86_64_macos" | "amd64_macos" => TargetTriple::macos_amd64(),
-                        "arm64_macos" | "aarch64_macos" => TargetTriple::macos_arm64(),
-                        // "riscv64_macos" => TargetTriple::macos_riscv64(),
-                        _ => {
-                            eprintln!(
-                                "Error: {} architecture isn't currently supported",
-                                args[i + 1]
-                            );
+                    let target_str = &args[i + 1];
+                    let triple = match parse_target(target_str) {
+                        Some(triple) => triple,
+                        None => {
+                            eprintln!("Error: unsupported target '{}'", target_str);
                             process::exit(1);
                         }
                     };
+                    architecture = triple;
                     i += 2;
                 } else {
                     eprintln!("Error: -t requires a target");

@@ -14,16 +14,19 @@ pub enum Format {
     MachO,
     XCOFF,
     A,
+    MZ,
     Custom,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Platform {
     Linux,
     Windows,
     MacOS,
     BSD,
     Solaris,
+    DOS,
+    Embedded,
 }
 
 pub trait PlatformCodeGen {
