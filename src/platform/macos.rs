@@ -1,6 +1,17 @@
 use super::*;
+use crate::arch::Architecture;
 
-pub struct MacOSPlatform;
+pub struct MacOSPlatform {
+    architecture: Architecture,
+}
+
+impl MacOSPlatform {
+    pub fn new() -> Self {
+        MacOSPlatform {
+            architecture: Architecture::AMD64, // default
+        }
+    }
+}
 
 impl PlatformCodeGen for MacOSPlatform {
     fn get_section_prefix(&self, section: &Section) -> String {
@@ -64,6 +75,10 @@ impl PlatformCodeGen for MacOSPlatform {
     }
 
     fn format_equ_directive(&self, name: &str, value: &str) -> String {
-        format!(".set _{}, {}\n", name, value)
+        format!(".set {}, {}\n", name, value)
+    }
+
+    fn set_architecture(&mut self, arch: Architecture) {
+        self.architecture = arch;
     }
 }

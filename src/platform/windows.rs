@@ -1,5 +1,17 @@
 use super::*;
-pub struct WindowsPlatform;
+use crate::arch::Architecture;
+
+pub struct WindowsPlatform {
+    architecture: Architecture,
+}
+
+impl WindowsPlatform {
+    pub fn new() -> Self {
+        WindowsPlatform {
+            architecture: Architecture::AMD64, // default
+        }
+    }
+}
 
 impl PlatformCodeGen for WindowsPlatform {
     fn get_section_prefix(&self, section: &Section) -> String {
@@ -67,5 +79,9 @@ impl PlatformCodeGen for WindowsPlatform {
 
     fn format_equ_directive(&self, name: &str, value: &str) -> String {
         format!(".equ {}, {}\n", name, value)
+    }
+
+    fn set_architecture(&mut self, arch: Architecture) {
+        self.architecture = arch;
     }
 }

@@ -70,7 +70,7 @@ pub struct CodeGenerator {
 impl CodeGenerator {
     pub fn new(target: TargetTriple) -> Self {
         let arch_codegen = create_arch_codegen(&target.architecture);
-        let platform_codegen = create_platform_codegen(&target.platform);
+        let platform_codegen = create_platform_codegen(&target.platform, &target.architecture);
 
         CodeGenerator {
             arch_codegen,

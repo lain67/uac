@@ -395,7 +395,7 @@ pub fn create_arch_codegen(architecture: &Architecture) -> Box<dyn ArchCodeGen> 
         Architecture::AMD64 => Box::new(AMD64CodeGen::new()),
         Architecture::ARM64 => Box::new(ARM64CodeGen::new()),
         Architecture::RISCV => Box::new(RISCVCodeGen::new()),
-        // Architecture::ARM32 => Box::new(ARM32CodeGen::new()),
+        Architecture::ARM32 => Box::new(ARM32CodeGen::new()),
         // Architecture::PowerPC64 => Box::new(PowerPC64CodeGen::new()),
         _ => {
             eprintln!(

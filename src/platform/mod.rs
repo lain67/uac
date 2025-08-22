@@ -3,6 +3,7 @@ pub mod macos;
 pub mod windows;
 
 use crate::{
+    arch::Architecture,
     core::{DataSize, Section},
     platform::{linux::LinuxPlatform, macos::MacOSPlatform, windows::WindowsPlatform},
 };
@@ -36,13 +37,29 @@ pub trait PlatformCodeGen {
     fn format_data_directive(&self, size: DataSize, name: &str, values: &[String]) -> String;
     fn format_reserve_directive(&self, name: &str, size: &String) -> String;
     fn format_equ_directive(&self, name: &str, value: &str) -> String;
+    fn set_architecture(&mut self, arch: Architecture);
 }
 
-pub fn create_platform_codegen(platform: &Platform) -> Box<dyn PlatformCodeGen> {
+pub fn create_platform_codegen(
+    platform: &Platform,
+    arch: &Architecture,
+) -> Box<dyn PlatformCodeGen> {
     match platform {
-        Platform::Linux => Box::new(LinuxPlatform),
-        Platform::Windows => Box::new(WindowsPlatform),
-        Platform::MacOS => Box::new(MacOSPlatform),
+        Platform::Linux => {
+            let mut linux_platform = LinuxPlatform::new();
+            linux_platform.set_architecture(*arch);
+            Box::new(linux_platform)
+        }
+        Platform::Windows => {
+            let mut windows_platform = WindowsPlatform::new();
+            windows_platform.set_architecture(*arch);
+            Box::new(windows_platform)
+        }
+        Platform::MacOS => {
+            let mut macos_platform = MacOSPlatform::new();
+            macos_platform.set_architecture(*arch);
+            Box::new(macos_platform)
+        }
         _ => {
             eprintln!(
                 "Error: Platform {:?} is not currently implemented",

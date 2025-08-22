@@ -100,23 +100,49 @@ impl ArchCodeGen for ARM64CodeGen {
         }
 
         let inner = &src[1..src.len() - 1].trim();
-        
-        if !inner.starts_with('x') && !inner.starts_with('w') && !inner.contains('+') && !inner.contains('-') {
-            return format!("    ldr {}, ={}\n", dst_reg, inner);
+
+        // If it's a register reference like [r1], map it properly
+        if let Some(mapped_reg) = self.register_map.get(&inner.to_string()) {
+            return format!("    ldr {}, [{}]\n", dst_reg, mapped_reg);
         }
 
-        format!("    ldr {}, {}\n", dst_reg, self.map_memory_operand(src))
+        // If it contains arithmetic like [r1 + offset]
+        if inner.contains('+') || inner.contains('-') {
+            return format!("    ldr {}, {}\n", dst_reg, self.map_memory_operand(src));
+        }
+
+        // If it's a symbol/label, load from that address
+        format!("    adr x16, {}\n    ldr {}, [x16]\n", inner, dst_reg)
     }
 
     fn generate_store(&self, dst: &str, src: &str) -> String {
-        let dst_mem = self.map_memory_operand(dst);
         let src_reg = self.map_operand(src);
 
         if src_reg.chars().all(|c| c.is_ascii_digit()) {
             return format!("    // ERROR: str requires a register, got {}\n", src_reg);
         }
 
-        format!("    str {}, {}\n", src_reg, dst_mem)
+        // Handle memory operand properly
+        if dst.starts_with('[') && dst.ends_with(']') {
+            let inner = &dst[1..dst.len() - 1].trim();
+
+            // If it's a register reference like [r1], map it properly
+            if let Some(mapped_reg) = self.register_map.get(&inner.to_string()) {
+                return format!("    str {}, [{}]\n", src_reg, mapped_reg);
+            }
+
+            // If it contains arithmetic like [r1 + offset]
+            if inner.contains('+') || inner.contains('-') {
+                let dst_mem = self.map_memory_operand(dst);
+                return format!("    str {}, {}\n", src_reg, dst_mem);
+            }
+
+            // If it's a symbol/label, load address first then store
+            return format!("    adr x16, {}\n    str {}, [x16]\n", inner, src_reg);
+        }
+
+        // Direct symbol without brackets - load address and store
+        format!("    adr x16, {}\n    str {}, [x16]\n", dst, src_reg)
     }
 
     fn generate_add(&self, dst: &str, src: &str) -> String {
@@ -142,12 +168,18 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_mul(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    mul {}, {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        // ARM64 mul doesn't accept immediate values - load into register first
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            format!(
+                "    mov x16, #{}\n    mul {}, {}, x16\n",
+                src_op, dst_reg, dst_reg
+            )
+        } else {
+            format!("    mul {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        }
     }
 
     fn generate_div(&self, dst: &str, src: &str) -> String {
@@ -891,9 +923,11 @@ impl ArchCodeGen for ARM64CodeGen {
             return self.map_memory_operand(operand);
         }
 
+        // Check for register mapping first
         if let Some(mapped) = self.register_map.get(operand) {
             mapped.clone()
         } else {
+            // If it's not a register, it might be a symbol - return as-is
             operand.to_string()
         }
     }

@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-UA_EXAMPLE="./examples/print_num.ua"
+UA_FILE="max"
+UA_EXAMPLE="./examples/$UA_FILE.ua"
 OUTDIR="./bin"
 mkdir -p "$OUTDIR"
 
@@ -22,8 +23,8 @@ TARGETS=(
 for target in "${TARGETS[@]}"; do
   echo "=== Building for $target ==="
 
-  asm_file="$OUTDIR/hello_${target}.s"
-  obj_file="$OUTDIR/hello_${target}.o"
+  asm_file="$OUTDIR/$UA_FILE _${target}.s"
+  obj_file="$OUTDIR/$UA_FILE _${target}.o"
 
   ./target/release/uac "$UA_EXAMPLE" -o "$asm_file" -t "$target"
 
