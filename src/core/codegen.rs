@@ -91,28 +91,28 @@ impl CodeGenerator {
                 Instruction::Label(name) => {
                     output.push_str(&format!("{}:\n", name));
                 }
-                Instruction::Mov(dst, src) => {
+                Instruction::Mov((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_mov(dst, src));
                 }
-                Instruction::Lea(dst, src) => {
+                Instruction::Lea((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_lea(dst, src));
                 }
-                Instruction::Load(dst, src) => {
+                Instruction::Load((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_load(dst, src));
                 }
-                Instruction::Store(dst, src) => {
+                Instruction::Store((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_store(dst, src));
                 }
-                Instruction::Add(dst, src) => {
+                Instruction::Add((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_add(dst, src));
                 }
-                Instruction::Sub(dst, src) => {
+                Instruction::Sub((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_sub(dst, src));
                 }
-                Instruction::Mul(dst, src) => {
+                Instruction::Mul((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_mul(dst, src));
                 }
-                Instruction::Div(dst, src) => {
+                Instruction::Div((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_div(dst, src));
                 }
                 Instruction::Inc(dst) => {
@@ -124,28 +124,28 @@ impl CodeGenerator {
                 Instruction::Neg(dst) => {
                     output.push_str(&self.arch_codegen.generate_neg(dst));
                 }
-                Instruction::And(dst, src) => {
+                Instruction::And((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_and(dst, src));
                 }
-                Instruction::Or(dst, src) => {
+                Instruction::Or((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_or(dst, src));
                 }
-                Instruction::Xor(dst, src) => {
+                Instruction::Xor((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_xor(dst, src));
                 }
                 Instruction::Not(dst) => {
                     output.push_str(&self.arch_codegen.generate_not(dst));
                 }
-                Instruction::Shl(dst, src) => {
+                Instruction::Shl((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_shl(dst, src));
                 }
-                Instruction::Shr(dst, src) => {
+                Instruction::Shr((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_shr(dst, src));
                 }
-                Instruction::Cmp(op1, op2) => {
+                Instruction::Cmp((op1, op2)) => {
                     output.push_str(&self.arch_codegen.generate_cmp(op1, op2));
                 }
-                Instruction::Test(op1, op2) => {
+                Instruction::Test((op1, op2)) => {
                     output.push_str(&self.arch_codegen.generate_test(op1, op2));
                 }
                 Instruction::Jmp(label) => {
@@ -223,52 +223,52 @@ impl CodeGenerator {
                     output.push_str(&self.platform_codegen.format_equ_directive(name, value));
                 }
                 // Conditional move instructions
-                Instruction::CmovEq(dst, src) => {
+                Instruction::CmovEq((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_eq(dst, src));
                 }
-                Instruction::CmovNe(dst, src) => {
+                Instruction::CmovNe((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_ne(dst, src));
                 }
-                Instruction::CmovLt(dst, src) => {
+                Instruction::CmovLt((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_lt(dst, src));
                 }
-                Instruction::CmovLe(dst, src) => {
+                Instruction::CmovLe((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_le(dst, src));
                 }
-                Instruction::CmovGt(dst, src) => {
+                Instruction::CmovGt((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_gt(dst, src));
                 }
-                Instruction::CmovGe(dst, src) => {
+                Instruction::CmovGe((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_ge(dst, src));
                 }
-                Instruction::CmovOv(dst, src) => {
+                Instruction::CmovOv((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_ov(dst, src));
                 }
-                Instruction::CmovNo(dst, src) => {
+                Instruction::CmovNo((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_no(dst, src));
                 }
-                Instruction::CmovS(dst, src) => {
+                Instruction::CmovS((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_s(dst, src));
                 }
-                Instruction::CmovNs(dst, src) => {
+                Instruction::CmovNs((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_ns(dst, src));
                 }
-                Instruction::CmovP(dst, src) => {
+                Instruction::CmovP((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_p(dst, src));
                 }
-                Instruction::CmovNp(dst, src) => {
+                Instruction::CmovNp((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_np(dst, src));
                 }
-                Instruction::CmovA(dst, src) => {
+                Instruction::CmovA((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_a(dst, src));
                 }
-                Instruction::CmovAe(dst, src) => {
+                Instruction::CmovAe((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_ae(dst, src));
                 }
-                Instruction::CmovB(dst, src) => {
+                Instruction::CmovB((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_b(dst, src));
                 }
-                Instruction::CmovBe(dst, src) => {
+                Instruction::CmovBe((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_cmov_be(dst, src));
                 }
                 // Stack operations
@@ -284,64 +284,64 @@ impl CodeGenerator {
                 Instruction::Popa => {
                     output.push_str(&self.arch_codegen.generate_popa());
                 }
-                Instruction::Enter(frame_size, nesting) => {
+                Instruction::Enter((frame_size, nesting)) => {
                     output.push_str(&self.arch_codegen.generate_enter(frame_size, nesting));
                 }
                 Instruction::Leave => {
                     output.push_str(&self.arch_codegen.generate_leave());
                 }
                 // Additional arithmetic operations
-                Instruction::Imul(dst, src) => {
+                Instruction::Imul((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_imul(dst, src));
                 }
-                Instruction::Idiv(dst, src) => {
+                Instruction::Idiv((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_idiv(dst, src));
                 }
-                Instruction::Mod(dst, src) => {
+                Instruction::Mod((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_mod(dst, src));
                 }
-                Instruction::Andn(dst, src) => {
+                Instruction::Andn((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_andn(dst, src));
                 }
                 // Shift and rotate operations
-                Instruction::Sal(dst, src) => {
+                Instruction::Sal((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_sal(dst, src));
                 }
-                Instruction::Sar(dst, src) => {
+                Instruction::Sar((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_sar(dst, src));
                 }
-                Instruction::Rol(dst, src) => {
+                Instruction::Rol((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_rol(dst, src));
                 }
-                Instruction::Ror(dst, src) => {
+                Instruction::Ror((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_ror(dst, src));
                 }
-                Instruction::Rcl(dst, src) => {
+                Instruction::Rcl((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_rcl(dst, src));
                 }
-                Instruction::Rcr(dst, src) => {
+                Instruction::Rcr((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_rcr(dst, src));
                 }
                 // Bit manipulation operations
-                Instruction::Bextr(dst, src, imm) => {
+                Instruction::Bextr((dst, src, imm)) => {
                     output.push_str(&self.arch_codegen.generate_bextr(dst, src, imm));
                 }
-                Instruction::Bsf(dst, src) => {
+                Instruction::Bsf((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_bsf(dst, src));
                 }
-                Instruction::Bsr(dst, src) => {
+                Instruction::Bsr((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_bsr(dst, src));
                 }
-                Instruction::Bt(dst, bit) => {
+                Instruction::Bt((dst, bit)) => {
                     output.push_str(&self.arch_codegen.generate_bt(dst, bit));
                 }
-                Instruction::Btr(dst, bit) => {
+                Instruction::Btr((dst, bit)) => {
                     output.push_str(&self.arch_codegen.generate_btr(dst, bit));
                 }
-                Instruction::Bts(dst, bit) => {
+                Instruction::Bts((dst, bit)) => {
                     output.push_str(&self.arch_codegen.generate_bts(dst, bit));
                 }
-                Instruction::Btc(dst, bit) => {
+                Instruction::Btc((dst, bit)) => {
                     output.push_str(&self.arch_codegen.generate_btc(dst, bit));
                 }
                 // Set condition code operations
@@ -394,19 +394,19 @@ impl CodeGenerator {
                     output.push_str(&self.arch_codegen.generate_set_be(dst));
                 }
                 // String operations
-                Instruction::Cmps(src1, src2) => {
+                Instruction::Cmps((src1, src2)) => {
                     output.push_str(&self.arch_codegen.generate_cmps(src1, src2));
                 }
-                Instruction::Scas(src, val) => {
+                Instruction::Scas((src, val)) => {
                     output.push_str(&self.arch_codegen.generate_scas(src, val));
                 }
-                Instruction::Stos(dst, src) => {
+                Instruction::Stos((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_stos(dst, src));
                 }
-                Instruction::Lods(dst, src) => {
+                Instruction::Lods((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_lods(dst, src));
                 }
-                Instruction::Movs(dst, src) => {
+                Instruction::Movs((dst, src)) => {
                     output.push_str(&self.arch_codegen.generate_movs(dst, src));
                 }
                 // Data conversion operations
@@ -466,16 +466,16 @@ impl CodeGenerator {
                     output.push_str(&self.arch_codegen.generate_loop_ne(label));
                 }
                 // I/O operations
-                Instruction::In(dst, port) => {
+                Instruction::In((dst, port)) => {
                     output.push_str(&self.arch_codegen.generate_in(dst, port));
                 }
-                Instruction::Out(port, src) => {
+                Instruction::Out((port, src)) => {
                     output.push_str(&self.arch_codegen.generate_out(port, src));
                 }
-                Instruction::Ins(dst, port) => {
+                Instruction::Ins((dst, port)) => {
                     output.push_str(&self.arch_codegen.generate_ins(dst, port));
                 }
-                Instruction::Outs(port, src) => {
+                Instruction::Outs((port, src)) => {
                     output.push_str(&self.arch_codegen.generate_outs(port, src));
                 }
                 // System and memory operations

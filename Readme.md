@@ -28,13 +28,15 @@ UAC (UASM Compiler) is a modular assembly language compiler that translates UASM
 
 ## Supported Targets
 
-| Architecture | Aliases                                       | Platforms                              | Example Target  |
-| :----------: | :-------------------------------------------- | :------------------------------------- | :-------------- |
-|  **AMD64**   | `amd64`, `x86_64`, `x64`, `amd`, `intel64`    | Linux, macOS, Windows                  | `x86_64_macos`  |
-|  **ARM64**   | `arm64`, `aarch64`, `arm`, `armv8_a`, `armv8` | Linux, macOS, Windows                  | `arm64_linux`   |
-|  **RISC-V**  | `riscv64`, `riscv`, `riscv64gc`               | Linux (mainstream), BSD (experimental) | `riscv64_linux` |
-|  Unstable:   |                                               |                                        |                 |
-|  **PPC64**   | `ppc64`, `ppc64le`, `powerpc64`               | Linux, BSD, AIX                        | `ppc64_linux`   |
+| Architecture | Aliases                          | Platforms                              | Example Target  |
+| :----------: | :------------------------------- | :------------------------------------- | :-------------- |
+|  **AMD64**   | `amd64`, `x86_64`, `amd`, ...    | Linux, macOS, Windows                  | `x86_64_macos`  |
+|  **ARM64**   | `arm64`, `aarch64`, `arm`, ...   | Linux, macOS, Windows                  | `arm64_linux`   |
+|  **RISC-V**  | `riscv64`, `riscv`, `riscv64gc`  | Linux (mainstream), BSD (experimental) | `riscv64_linux` |
+|  Unstable:   |                                  |                                        |                 |
+|  **AMD32**   | `amd32`, `x86`, `i386`, ...      | Linux, windows                         |
+|  **ARM32**   | `arm32`, `aarch32`, `armv7`, ... | Linux                                  |
+|  **PPC64**   | `ppc64`, `ppc64le`, `powerpc64`  | Linux, BSD, AIX                        | `ppc64_linux`   |
 
 _Roadmap: Up to 20 architectures planned across multiple platforms._
 
@@ -150,7 +152,6 @@ msg_len     equ 14
 
 ---
 
-
 ## Data Movement
 
 ```
@@ -168,24 +169,24 @@ cmovCC dest, src       ; Move if condition CC is met
 
 Conditions:
 
-| CC  | Meaning                    |
-| --- | -------------------------- |
-| EQ  | Equal / Zero               |
-| NE  | Not equal / Not zero       |
-| LT  | Less                       |
-| LE  | Less or equal              |
-| GT  | Greater                    |
-| GE  | Greater or equal           |
-| OV  | Overflow                   |
-| NO  | Not overflow               |
-| S   | Sign                       |
-| NS  | Not sign                   |
-| P   | Parity                     |
-| NP  | Not parity                 |
-| A   | Above (unsigned)           |
-| AE  | Above or equal             |
-| B   | Below (unsigned)           |
-| BE  | Below or equal             |
+| CC  | Meaning              |
+| --- | -------------------- |
+| EQ  | Equal / Zero         |
+| NE  | Not equal / Not zero |
+| LT  | Less                 |
+| LE  | Less or equal        |
+| GT  | Greater              |
+| GE  | Greater or equal     |
+| OV  | Overflow             |
+| NO  | Not overflow         |
+| S   | Sign                 |
+| NS  | Not sign             |
+| P   | Parity               |
+| NP  | Not parity           |
+| A   | Above (unsigned)     |
+| AE  | Above or equal       |
+| B   | Below (unsigned)     |
+| BE  | Below or equal       |
 
 ---
 
@@ -336,7 +337,6 @@ equ name, value         ; Define named constant
 ; Single-line comment
 mov r0, 42   ; Inline comment
 ```
-
 
 ---
 

@@ -1,3 +1,9 @@
+### v0.3.1 - Pre-release
+
+- librarized uac
+- updated and fixed parser
+- added `x86` architecture as `AMD32`
+
 ## v0.3.0 - Pre-release
 
 - Added complete list of instructions

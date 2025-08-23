@@ -51,6 +51,7 @@ pub enum DataSize {
     Dword,
     Qword,
 }
+
 #[derive(Debug, Clone)]
 pub enum Instruction {
     /// Define code locations and jump targets.
@@ -73,7 +74,7 @@ pub enum Instruction {
     /// mov r0, r1
     /// mov r0, 42
     /// ```
-    Mov(String, String),
+    Mov((String, String)),
 
     /// Load effective address of memory into register
     ///
@@ -82,7 +83,7 @@ pub enum Instruction {
     /// lea r0, [r1 + 4]
     /// lea r1, [msg]
     /// ```
-    Lea(String, String),
+    Lea((String, String)),
 
     /// Load from memory address
     ///
@@ -91,7 +92,7 @@ pub enum Instruction {
     /// load r0, [r1]
     /// load r1, [msg]
     /// ```
-    Load(String, String),
+    Load((String, String)),
 
     /// Store to memory address
     ///
@@ -100,7 +101,7 @@ pub enum Instruction {
     /// store [r1], r0
     /// store [msg], r1
     /// ```
-    Store(String, String),
+    Store((String, String)),
 
     //
     // Conditional Moves
@@ -111,7 +112,7 @@ pub enum Instruction {
     /// ```asm
     /// cmoveq r0, r1
     /// ```
-    CmovEq(String, String),
+    CmovEq((String, String)),
 
     /// Move if not equal/not zero
     ///
@@ -119,7 +120,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovne r0, r1
     /// ```
-    CmovNe(String, String),
+    CmovNe((String, String)),
 
     /// Move if less
     ///
@@ -127,7 +128,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovlt r0, r1
     /// ```
-    CmovLt(String, String),
+    CmovLt((String, String)),
 
     /// Move if less or equal
     ///
@@ -135,7 +136,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovle r0, r1
     /// ```
-    CmovLe(String, String),
+    CmovLe((String, String)),
 
     /// Move if greater
     ///
@@ -143,7 +144,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovgt r0, r1
     /// ```
-    CmovGt(String, String),
+    CmovGt((String, String)),
 
     /// Move if greater or equal
     ///
@@ -151,7 +152,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovge r0, r1
     /// ```
-    CmovGe(String, String),
+    CmovGe((String, String)),
 
     /// Move if overflow
     ///
@@ -159,7 +160,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovov r0, r1
     /// ```
-    CmovOv(String, String),
+    CmovOv((String, String)),
 
     /// Move if not overflow
     ///
@@ -167,7 +168,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovno r0, r1
     /// ```
-    CmovNo(String, String),
+    CmovNo((String, String)),
 
     /// Move if sign
     ///
@@ -175,7 +176,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovs r0, r1
     /// ```
-    CmovS(String, String),
+    CmovS((String, String)),
 
     /// Move if not sign
     ///
@@ -183,7 +184,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovns r0, r1
     /// ```
-    CmovNs(String, String),
+    CmovNs((String, String)),
 
     /// Move if parity
     ///
@@ -191,7 +192,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovp r0, r1
     /// ```
-    CmovP(String, String),
+    CmovP((String, String)),
 
     /// Move if not parity
     ///
@@ -199,7 +200,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovnp r0, r1
     /// ```
-    CmovNp(String, String),
+    CmovNp((String, String)),
 
     /// Move if above (unsigned)
     ///
@@ -207,7 +208,7 @@ pub enum Instruction {
     /// ```asm
     /// cmova r0, r1
     /// ```
-    CmovA(String, String),
+    CmovA((String, String)),
 
     /// Move if above or equal
     ///
@@ -215,7 +216,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovae r0, r1
     /// ```
-    CmovAe(String, String),
+    CmovAe((String, String)),
 
     /// Move if below (unsigned)
     ///
@@ -223,7 +224,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovb r0, r1
     /// ```
-    CmovB(String, String),
+    CmovB((String, String)),
 
     /// Move if below or equal
     ///
@@ -231,7 +232,7 @@ pub enum Instruction {
     /// ```asm
     /// cmovbe r0, r1
     /// ```
-    CmovBe(String, String),
+    CmovBe((String, String)),
 
     //
     // Stack Operations
@@ -275,7 +276,7 @@ pub enum Instruction {
     /// ```asm
     /// enter 16, 0
     /// ```
-    Enter(String, String),
+    Enter((String, String)),
 
     /// Delete stack frame
     ///
@@ -295,7 +296,7 @@ pub enum Instruction {
     /// add r0, r1
     /// add r0, 5
     /// ```
-    Add(String, String),
+    Add((String, String)),
 
     /// Subtraction
     ///
@@ -304,7 +305,7 @@ pub enum Instruction {
     /// sub r0, r1
     /// sub r0, 10
     /// ```
-    Sub(String, String),
+    Sub((String, String)),
 
     /// Multiplication
     ///
@@ -312,7 +313,7 @@ pub enum Instruction {
     /// ```asm
     /// mul r0, r1
     /// ```
-    Mul(String, String),
+    Mul((String, String)),
 
     /// Integer multiplication
     ///
@@ -320,7 +321,7 @@ pub enum Instruction {
     /// ```asm
     /// imul r0, r1
     /// ```
-    Imul(String, String),
+    Imul((String, String)),
 
     /// Division
     ///
@@ -328,7 +329,7 @@ pub enum Instruction {
     /// ```asm
     /// div r0, r1
     /// ```
-    Div(String, String),
+    Div((String, String)),
 
     /// Integer division
     ///
@@ -336,7 +337,7 @@ pub enum Instruction {
     /// ```asm
     /// idiv r0, r1
     /// ```
-    Idiv(String, String),
+    Idiv((String, String)),
 
     /// Modulo
     ///
@@ -344,7 +345,7 @@ pub enum Instruction {
     /// ```asm
     /// mod r0, r1
     /// ```
-    Mod(String, String),
+    Mod((String, String)),
 
     /// Increment
     ///
@@ -380,7 +381,7 @@ pub enum Instruction {
     /// and r0, r1
     /// and r0, 0xFF
     /// ```
-    And(String, String),
+    And((String, String)),
 
     /// Bitwise OR
     ///
@@ -389,7 +390,7 @@ pub enum Instruction {
     /// or r0, r1
     /// or r0, 0x80
     /// ```
-    Or(String, String),
+    Or((String, String)),
 
     /// Bitwise XOR
     ///
@@ -398,7 +399,7 @@ pub enum Instruction {
     /// xor r0, r1
     /// xor r0, r0  ; Clear register
     /// ```
-    Xor(String, String),
+    Xor((String, String)),
 
     /// Bitwise NOT
     ///
@@ -414,7 +415,7 @@ pub enum Instruction {
     /// ```asm
     /// andn r0, r1
     /// ```
-    Andn(String, String),
+    Andn((String, String)),
 
     /// Shift left
     ///
@@ -423,7 +424,7 @@ pub enum Instruction {
     /// shl r0, 2
     /// shl r1, r2
     /// ```
-    Shl(String, String),
+    Shl((String, String)),
 
     /// Shift right
     ///
@@ -432,7 +433,7 @@ pub enum Instruction {
     /// shr r0, 1
     /// shr r1, r2
     /// ```
-    Shr(String, String),
+    Shr((String, String)),
 
     /// Arithmetic shift left
     ///
@@ -440,7 +441,7 @@ pub enum Instruction {
     /// ```asm
     /// sal r0, 2
     /// ```
-    Sal(String, String),
+    Sal((String, String)),
 
     /// Arithmetic shift right
     ///
@@ -448,7 +449,7 @@ pub enum Instruction {
     /// ```asm
     /// sar r0, 1
     /// ```
-    Sar(String, String),
+    Sar((String, String)),
 
     /// Rotate left
     ///
@@ -456,7 +457,7 @@ pub enum Instruction {
     /// ```asm
     /// rol r0, 3
     /// ```
-    Rol(String, String),
+    Rol((String, String)),
 
     /// Rotate right
     ///
@@ -464,7 +465,7 @@ pub enum Instruction {
     /// ```asm
     /// ror r0, 2
     /// ```
-    Ror(String, String),
+    Ror((String, String)),
 
     /// Rotate through carry left
     ///
@@ -472,7 +473,7 @@ pub enum Instruction {
     /// ```asm
     /// rcl r0, 1
     /// ```
-    Rcl(String, String),
+    Rcl((String, String)),
 
     /// Rotate through carry right
     ///
@@ -480,7 +481,7 @@ pub enum Instruction {
     /// ```asm
     /// rcr r0, 1
     /// ```
-    Rcr(String, String),
+    Rcr((String, String)),
 
     /// Bit extract
     ///
@@ -488,7 +489,7 @@ pub enum Instruction {
     /// ```asm
     /// bextr r0, r1, 8
     /// ```
-    Bextr(String, String, String),
+    Bextr((String, String, String)),
 
     /// Bit scan forward
     ///
@@ -496,7 +497,7 @@ pub enum Instruction {
     /// ```asm
     /// bsf r0, r1
     /// ```
-    Bsf(String, String),
+    Bsf((String, String)),
 
     /// Bit scan reverse
     ///
@@ -504,7 +505,7 @@ pub enum Instruction {
     /// ```asm
     /// bsr r0, r1
     /// ```
-    Bsr(String, String),
+    Bsr((String, String)),
 
     //
     // Comparison & Conditional Sets
@@ -516,7 +517,7 @@ pub enum Instruction {
     /// cmp r0, r1
     /// cmp r0, 42
     /// ```
-    Cmp(String, String),
+    Cmp((String, String)),
 
     /// Bitwise test
     ///
@@ -525,7 +526,7 @@ pub enum Instruction {
     /// test r0, r1
     /// test r0, 0xFF
     /// ```
-    Test(String, String),
+    Test((String, String)),
 
     /// Test bit
     ///
@@ -533,7 +534,7 @@ pub enum Instruction {
     /// ```asm
     /// bt r0, 7
     /// ```
-    Bt(String, String),
+    Bt((String, String)),
 
     /// Test bit and reset
     ///
@@ -541,7 +542,7 @@ pub enum Instruction {
     /// ```asm
     /// btr r0, 3
     /// ```
-    Btr(String, String),
+    Btr((String, String)),
 
     /// Test bit and set
     ///
@@ -549,7 +550,7 @@ pub enum Instruction {
     /// ```asm
     /// bts r0, 5
     /// ```
-    Bts(String, String),
+    Bts((String, String)),
 
     /// Test bit and complement
     ///
@@ -557,7 +558,7 @@ pub enum Instruction {
     /// ```asm
     /// btc r0, 2
     /// ```
-    Btc(String, String),
+    Btc((String, String)),
 
     /// Set if equal/zero
     ///
@@ -696,7 +697,7 @@ pub enum Instruction {
     /// ```asm
     /// cmps r0, r1
     /// ```
-    Cmps(String, String),
+    Cmps((String, String)),
 
     /// Scan string
     ///
@@ -704,7 +705,7 @@ pub enum Instruction {
     /// ```asm
     /// scas r0, 0
     /// ```
-    Scas(String, String),
+    Scas((String, String)),
 
     /// Store string
     ///
@@ -712,7 +713,7 @@ pub enum Instruction {
     /// ```asm
     /// stos [r0], r1
     /// ```
-    Stos(String, String),
+    Stos((String, String)),
 
     /// Load string
     ///
@@ -720,7 +721,7 @@ pub enum Instruction {
     /// ```asm
     /// lods r0, [r1]
     /// ```
-    Lods(String, String),
+    Lods((String, String)),
 
     /// Move string
     ///
@@ -728,7 +729,7 @@ pub enum Instruction {
     /// ```asm
     /// movs [r0], [r1]
     /// ```
-    Movs(String, String),
+    Movs((String, String)),
 
     //
     // Data Conversion
@@ -963,7 +964,7 @@ pub enum Instruction {
     /// ```asm
     /// in r0, 0x3F8
     /// ```
-    In(String, String),
+    In((String, String)),
 
     /// Output to port
     ///
@@ -971,7 +972,7 @@ pub enum Instruction {
     /// ```asm
     /// out 0x3F8, r0
     /// ```
-    Out(String, String),
+    Out((String, String)),
 
     /// Input string from port
     ///
@@ -979,7 +980,7 @@ pub enum Instruction {
     /// ```asm
     /// ins [r0], 0x3F8
     /// ```
-    Ins(String, String),
+    Ins((String, String)),
 
     /// Output string to port
     ///
@@ -987,7 +988,7 @@ pub enum Instruction {
     /// ```asm
     /// outs 0x3F8, [r0]
     /// ```
-    Outs(String, String),
+    Outs((String, String)),
 
     //
     // System & CPU Operations

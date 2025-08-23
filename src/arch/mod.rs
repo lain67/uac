@@ -2,13 +2,14 @@ use std::{collections::HashMap, process};
 
 use crate::{
     arch::{
-        amd64::AMD64CodeGen, arm32::ARM32CodeGen, arm64::ARM64CodeGen, powerpc64::PowerPC64CodeGen,
+        amd32::AMD32CodeGen, amd64::AMD64CodeGen, arm32::ARM32CodeGen, arm64::ARM64CodeGen,
         risc_v::RISCVCodeGen,
     },
     core::{Section, TargetTriple},
     platform::Platform,
 };
 
+pub mod amd32;
 pub mod amd64;
 pub mod arm32;
 pub mod arm64;
@@ -63,7 +64,7 @@ pub enum Architecture {
     /// - DOS
     /// - Windows (>=3.1)
     /// - macOS (<=10.6, legacy only)
-    IA32,
+    AMD32,
 
     /// Aliases: arm, armv7, armhf, arm32
     ///
@@ -393,9 +394,10 @@ pub trait ArchCodeGen {
 pub fn create_arch_codegen(architecture: &Architecture) -> Box<dyn ArchCodeGen> {
     match architecture {
         Architecture::AMD64 => Box::new(AMD64CodeGen::new()),
+        Architecture::AMD32 => Box::new(AMD32CodeGen::new()),
         Architecture::ARM64 => Box::new(ARM64CodeGen::new()),
-        Architecture::RISCV => Box::new(RISCVCodeGen::new()),
         Architecture::ARM32 => Box::new(ARM32CodeGen::new()),
+        Architecture::RISCV => Box::new(RISCVCodeGen::new()),
         // Architecture::PowerPC64 => Box::new(PowerPC64CodeGen::new()),
         _ => {
             eprintln!(
@@ -446,9 +448,9 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             },
         ),
         (
-            IA32,
+            AMD32,
             ArchInfo {
-                aliases: &["x86", "i386", "ia32", "ia-32"],
+                aliases: &["x86", "i386", "ia32", "ia-32", "amd32"],
                 supported: &[Linux, Windows, MacOS, BSD, DOS],
             },
         ),

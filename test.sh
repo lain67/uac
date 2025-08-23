@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-UA_FILE="max"
+UA_FILE="hello"
 UA_EXAMPLE="./examples/$UA_FILE.ua"
 OUTDIR="./bin"
 mkdir -p "$OUTDIR"
@@ -12,6 +12,8 @@ TARGETS=(
   "amd64_linux"
   "amd64_macos"
   "amd64_windows"
+  "amd32_linux"
+  "amd32_windows"
   "arm64_linux"
   "arm32_linux"
   "arm64_macos"
@@ -32,6 +34,15 @@ for target in "${TARGETS[@]}"; do
     amd64_linux)
       as --64 "$asm_file" -o "$obj_file"
       ;;
+
+    amd32_linux)
+         if command -v i686-linux-gnu-as >/dev/null 2>&1; then
+           i686-linux-gnu-as "$asm_file" -o "$obj_file"
+         else
+           llvm-mc --triple=i686-linux-gnu -arch=x86 \
+                   -filetype=obj -o "$obj_file" "$asm_file"
+         fi
+    ;;
 
     arm64_linux)
       if command -v aarch64-linux-gnu-as >/dev/null 2>&1; then
@@ -79,6 +90,11 @@ for target in "${TARGETS[@]}"; do
       llvm-mc -arch=$( [[ $target == amd64* ]] && echo x86-64 || echo aarch64 ) \
               -filetype=obj -o "$obj_file" "$asm_file" --triple=$( [[ $target == amd64* ]] && echo x86_64-windows || echo aarch64-windows )
       ;;
+
+    amd32_windows)
+      llvm-mc -arch=$( [[ $target == amd32* ]] && echo x86 || echo aarch32 ) \
+              -filetype=obj -o "$obj_file" "$asm_file" --triple=$( [[ $target == amd32* ]] && echo x86-windows || echo aarch32-windows )
+    ;;
 
     *)
       echo "Unknown target: $target" >&2
