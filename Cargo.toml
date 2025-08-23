@@ -1,5 +1,7 @@
 [package]
 name = "uac"
+description = "universal assembly compiler"
+license = "MIT"
 version = "0.3.0"
 edition = "2024"
 
