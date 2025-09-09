@@ -1,3 +1,7 @@
+### v0.4.0
+
+- stable architectures: `AMD64`, `AMD32`, `ARM64`, `ARM32`
+
 ### v0.3.1 - Pre-release
 
 - librarized uac

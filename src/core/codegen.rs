@@ -80,7 +80,7 @@ impl CodeGenerator {
     }
 
     pub fn generate(&self, instructions: &[Instruction]) -> String {
-        let mut output = String::new();
+        let mut output = String::with_capacity(64);
         output.push_str(&self.arch_codegen.get_syntax_header());
 
         for instruction in instructions {

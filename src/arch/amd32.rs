@@ -7,7 +7,7 @@ pub struct AMD32CodeGen {
 
 impl AMD32CodeGen {
     pub fn new() -> Self {
-        let mut register_map = HashMap::new();
+        let mut register_map = HashMap::with_capacity(32);
 
         // Function argument registers (typically passed on stack in 32-bit)
         // But we'll map to available registers for consistency
@@ -25,6 +25,18 @@ impl AMD32CodeGen {
         register_map.insert("r9".to_string(), "edx".to_string());
         register_map.insert("r10".to_string(), "esi".to_string());
         register_map.insert("r11".to_string(), "edi".to_string());
+        register_map.insert("r12".to_string(), "eax".to_string()); // Reuse eax
+        register_map.insert("r13".to_string(), "ebx".to_string()); // Reuse ebx
+        register_map.insert("r14".to_string(), "ecx".to_string()); // Reuse ecx
+        register_map.insert("r15".to_string(), "edx".to_string()); // Reuse edx
+        register_map.insert("r16".to_string(), "esi".to_string()); // Reuse esi
+        register_map.insert("r17".to_string(), "edi".to_string()); // Reuse edi
+        register_map.insert("r18".to_string(), "eax".to_string()); // Reuse eax
+        register_map.insert("r19".to_string(), "ebx".to_string()); // Reuse ebx
+        register_map.insert("r20".to_string(), "ecx".to_string()); // Reuse ecx
+        register_map.insert("r21".to_string(), "edx".to_string()); // Reuse edx
+        register_map.insert("r22".to_string(), "esi".to_string()); // Reuse esi
+        register_map.insert("r23".to_string(), "edi".to_string()); // Reuse edi
 
         // Special purpose registers
         register_map.insert("sp".to_string(), "esp".to_string());
@@ -266,46 +278,82 @@ impl ArchCodeGen for AMD32CodeGen {
 
     // Conditional Moves (Pentium Pro+)
     fn generate_cmov_eq(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmove {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len()) % 10000;
+            format!(
+                "    je .Lcmove_set_{}\n    jmp .Lcmove_end_{}\n.Lcmove_set_{}:\n    mov {}, {}\n.Lcmove_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmove {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_ne(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovne {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 1) % 10000;
+            format!(
+                "    jne .Lcmovne_set_{}\n    jmp .Lcmovne_end_{}\n.Lcmovne_set_{}:\n    mov {}, {}\n.Lcmovne_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovne {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_lt(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovl {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 2) % 10000;
+            format!(
+                "    jl .Lcmovl_set_{}\n    jmp .Lcmovl_end_{}\n.Lcmovl_set_{}:\n    mov {}, {}\n.Lcmovl_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovl {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_le(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovle {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 3) % 10000;
+            format!(
+                "    jle .Lcmovle_set_{}\n    jmp .Lcmovle_end_{}\n.Lcmovle_set_{}:\n    mov {}, {}\n.Lcmovle_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovle {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_gt(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovg {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 4) % 10000;
+            format!(
+                "    jg .Lcmovg_set_{}\n    jmp .Lcmovg_end_{}\n.Lcmovg_set_{}:\n    mov {}, {}\n.Lcmovg_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovg {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_ge(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovge {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 5) % 10000;
+            format!(
+                "    jge .Lcmovge_set_{}\n    jmp .Lcmovge_end_{}\n.Lcmovge_set_{}:\n    mov {}, {}\n.Lcmovge_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovge {}, {}\n", dst_reg, src_op)
+        }
     }
 
     // Stack
@@ -520,74 +568,134 @@ impl ArchCodeGen for AMD32CodeGen {
     }
 
     fn generate_cmov_ov(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovo {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 6) % 10000;
+            format!(
+                "    jo .Lcmovo_set_{}\n    jmp .Lcmovo_end_{}\n.Lcmovo_set_{}:\n    mov {}, {}\n.Lcmovo_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovo {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_no(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovno {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 7) % 10000;
+            format!(
+                "    jno .Lcmovno_set_{}\n    jmp .Lcmovno_end_{}\n.Lcmovno_set_{}:\n    mov {}, {}\n.Lcmovno_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovno {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_s(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovs {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 8) % 10000;
+            format!(
+                "    js .Lcmovs_set_{}\n    jmp .Lcmovs_end_{}\n.Lcmovs_set_{}:\n    mov {}, {}\n.Lcmovs_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovs {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_ns(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovns {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 9) % 10000;
+            format!(
+                "    jns .Lcmovns_set_{}\n    jmp .Lcmovns_end_{}\n.Lcmovns_set_{}:\n    mov {}, {}\n.Lcmovns_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovns {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_p(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovp {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 10) % 10000;
+            format!(
+                "    jp .Lcmovp_set_{}\n    jmp .Lcmovp_end_{}\n.Lcmovp_set_{}:\n    mov {}, {}\n.Lcmovp_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovp {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_np(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovnp {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 11) % 10000;
+            format!(
+                "    jnp .Lcmovnp_set_{}\n    jmp .Lcmovnp_end_{}\n.Lcmovnp_set_{}:\n    mov {}, {}\n.Lcmovnp_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovnp {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_a(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmova {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 12) % 10000;
+            format!(
+                "    ja .Lcmova_set_{}\n    jmp .Lcmova_end_{}\n.Lcmova_set_{}:\n    mov {}, {}\n.Lcmova_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmova {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_ae(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovae {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 13) % 10000;
+            format!(
+                "    jae .Lcmovae_set_{}\n    jmp .Lcmovae_end_{}\n.Lcmovae_set_{}:\n    mov {}, {}\n.Lcmovae_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovae {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_b(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovb {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 14) % 10000;
+            format!(
+                "    jb .Lcmovb_set_{}\n    jmp .Lcmovb_end_{}\n.Lcmovb_set_{}:\n    mov {}, {}\n.Lcmovb_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovb {}, {}\n", dst_reg, src_op)
+        }
     }
     fn generate_cmov_be(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    cmovbe {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 15) % 10000;
+            format!(
+                "    jbe .Lcmovbe_set_{}\n    jmp .Lcmovbe_end_{}\n.Lcmovbe_set_{}:\n    mov {}, {}\n.Lcmovbe_end_{}:\n",
+                hash, hash, hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    cmovbe {}, {}\n", dst_reg, src_op)
+        }
     }
 
     fn generate_pusha(&self) -> String {
@@ -822,7 +930,10 @@ impl ArchCodeGen for AMD32CodeGen {
     }
     fn generate_clwb(&self, addr: &str) -> String {
         // Not available in 32-bit
-        format!("    # clwb not available in 32-bit: {}\n", self.map_memory_operand(addr))
+        format!(
+            "    # clwb not available in 32-bit: {}\n",
+            self.map_memory_operand(addr)
+        )
     }
 
     // Memory/Register mapping functions

@@ -8,7 +8,7 @@ pub struct ARM32CodeGen {
 
 impl ARM32CodeGen {
     pub fn new() -> Self {
-        let mut register_map = HashMap::new();
+        let mut register_map = HashMap::with_capacity(32);
 
         // ARM32 general purpose registers
         register_map.insert("r0".to_string(), "r0".to_string()); // 1st arg/return
@@ -26,7 +26,7 @@ impl ARM32CodeGen {
         register_map.insert("r12".to_string(), "r12".to_string()); // IP (scratch)
         register_map.insert("r13".to_string(), "r13".to_string()); // SP
         register_map.insert("r14".to_string(), "r14".to_string()); // LR
-        register_map.insert("r15".to_string(), "r15".to_string()); // PC
+        register_map.insert("r15".to_string(), "r4".to_string()); // Map to r4 (PC cannot be destination)
 
         // Special purpose register aliases
         register_map.insert("sp".to_string(), "sp".to_string()); // Stack pointer (r13)
@@ -43,6 +43,12 @@ impl ARM32CodeGen {
         register_map.insert("r20".to_string(), "r8".to_string());
         register_map.insert("r21".to_string(), "r9".to_string());
         register_map.insert("r22".to_string(), "r10".to_string());
+        register_map.insert("r23".to_string(), "r11".to_string()); // Reuse r11
+        register_map.insert("r24".to_string(), "r0".to_string()); // Reuse r0
+        register_map.insert("r25".to_string(), "r1".to_string()); // Reuse r1
+        register_map.insert("r26".to_string(), "r2".to_string()); // Reuse r2
+        register_map.insert("r27".to_string(), "r3".to_string()); // Reuse r3
+        register_map.insert("r28".to_string(), "r4".to_string()); // Reuse r4
 
         ARM32CodeGen { register_map }
     }
@@ -301,8 +307,14 @@ impl ArchCodeGen for ARM32CodeGen {
 
         if right_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
             format!("    cmp {}, #{}\n", left_reg, right_op)
-        } else {
+        } else if right_op.starts_with('r')
+            || right_op == "sp"
+            || right_op == "lr"
+            || right_op == "pc"
+        {
             format!("    cmp {}, {}\n", left_reg, right_op)
+        } else {
+            format!("    ldr r12, ={}\n    cmp {}, r12\n", right_op, left_reg)
         }
     }
 

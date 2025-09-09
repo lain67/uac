@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::HashMap;
 
 pub struct Parser {
     lines: Vec<String>,
@@ -8,40 +9,43 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(input: &str) -> Self {
-        let lines: Vec<String> = input
-            .lines()
-            .map(|line| {
-                let line = if let Some(pos) = line.find(';') {
-                    &line[..pos]
-                } else {
-                    line
-                };
-                line.trim().to_string()
-            })
-            .filter(|line| !line.is_empty())
-            .collect();
+        let estimated_lines = input.len() / 20;
+        let mut lines = Vec::with_capacity(estimated_lines);
+        
+        for line in input.lines() {
+            let line = if let Some(pos) = find_byte(line.as_bytes(), b';') {
+                &line[..pos]
+            } else {
+                line
+            };
+            let trimmed = line.trim();
+            if !trimmed.is_empty() {
+                lines.push(trimmed.to_string());
+            }
+        }
 
         Parser {
             lines,
             current_section: Section::Text,
-            constants: HashMap::new(),
+            constants: HashMap::with_capacity(16),
         }
     }
 
     pub fn parse(&mut self) -> Result<Vec<Instruction>, String> {
-        let mut instructions = Vec::new();
+        let mut instructions = Vec::with_capacity(self.lines.len());
 
         for i in 0..self.lines.len() {
-            let line = self.lines[i].clone();
-            if line.starts_with("section") {
-                let section = self.parse_section(&line)?;
+            let line = &self.lines[i];
+            
+            if !line.is_empty() && line.as_bytes()[0] == b's' && line.starts_with("section") {
+                let section = self.parse_section(&line.to_string())?;
                 if let Some(section_instr) = section {
                     instructions.push(section_instr);
                 }
                 continue;
             }
 
-            let instruction = self.parse_instruction(&line)?;
+            let instruction = self.parse_instruction(&line.to_string())?;
             if let Some(instr) = instruction {
                 instructions.push(instr);
             }
@@ -115,7 +119,6 @@ impl Parser {
             return Ok(Some(Instruction::Label(label)));
         }
 
-        // Data definitions
         if line.contains(" db ") {
             let parts = self.parse_data_line(line);
             if parts.len() >= 3 && parts[1] == "db" {
@@ -152,7 +155,6 @@ impl Parser {
             }
         }
 
-        // Memory reservations
         if line.contains(" resb ") {
             let parts = self.parse_data_line(line);
             if parts.len() >= 3 && parts[1] == "resb" {
@@ -194,7 +196,6 @@ impl Parser {
             return Ok(None);
         }
 
-        // Constants
         if parts.len() >= 3 && parts[1] == "equ" {
             let name = parts[0].to_string();
             let value = parts[2].to_string();
@@ -356,10 +357,12 @@ impl Parser {
         }
     }
 
+    #[inline(always)]
     fn clean_operand(&self, operand: &str) -> String {
         operand.trim_end_matches(',').to_string()
     }
 
+    #[inline(always)]
     fn check_parts(&self, size: usize, parts: &Vec<&str>) -> Result<(), String> {
         if parts.len() < size {
             return Err(format!("{} requires {} operands", parts[0], size - 1));
@@ -367,6 +370,7 @@ impl Parser {
         Ok(())
     }
 
+    #[inline(always)]
     fn get_two(&self, parts: &Vec<&str>) -> Result<(String, String), String> {
         self.check_parts(3, &parts)?;
         let dst = self.clean_operand(parts[1]);
@@ -374,6 +378,7 @@ impl Parser {
         Ok((dst, src))
     }
 
+    #[inline(always)]
     fn get_three(&self, parts: &Vec<&str>) -> Result<(String, String, String), String> {
         self.check_parts(4, &parts)?;
         let first = self.clean_operand(parts[1]);
@@ -382,8 +387,19 @@ impl Parser {
         Ok((first, second, third))
     }
 
+    #[inline(always)]
     fn get_one(&self, parts: &Vec<&str>) -> Result<String, String> {
         self.check_parts(2, &parts)?;
         Ok(self.clean_operand(parts[1]))
     }
+}
+
+#[inline(always)]
+fn find_byte(haystack: &[u8], needle: u8) -> Option<usize> {
+    for (i, &byte) in haystack.iter().enumerate() {
+        if byte == needle {
+            return Some(i);
+        }
+    }
+    None
 }

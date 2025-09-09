@@ -2,7 +2,7 @@
 
 UAC (UASM Compiler) is a modular assembly language compiler that translates UASM assembly into native assembly code for multiple architectures and platforms.
 
-> **⚠️ Development Status**: This compiler is currently under heavy development and not ready for production use.
+> **⚠️ Development Status**: This compiler is currently under development and not ready for production use. Contributions are Welcome!
 
 ## Quick Start
 
@@ -11,7 +11,7 @@ UAC (UASM Compiler) is a modular assembly language compiler that translates UASM
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/absurdish/uac.git
+   git clone https://github.com/lain67/uac.git
    cd uac
    ```
 
@@ -32,19 +32,40 @@ UAC (UASM Compiler) is a modular assembly language compiler that translates UASM
 | :----------: | :------------------------------- | :------------------------------------- | :-------------- |
 |  **AMD64**   | `amd64`, `x86_64`, `amd`, ...    | Linux, macOS, Windows                  | `x86_64_macos`  |
 |  **ARM64**   | `arm64`, `aarch64`, `arm`, ...   | Linux, macOS, Windows                  | `arm64_linux`   |
-|  **RISC-V**  | `riscv64`, `riscv`, `riscv64gc`  | Linux (mainstream), BSD (experimental) | `riscv64_linux` |
+|  **AMD32**   | `amd32`, `x86`, `i386`, ...      | Linux, windows                         | `x86_windows`   |
+|  **ARM32**   | `arm32`, `aarch32`, `armv7`, ... | Linux                                  | `arm32_linux`   |
 |  Unstable:   |                                  |                                        |                 |
-|  **AMD32**   | `amd32`, `x86`, `i386`, ...      | Linux, windows                         |
-|  **ARM32**   | `arm32`, `aarch32`, `armv7`, ... | Linux                                  |
+|  **RISC-V**  | `riscv64`, `riscv`, `riscv64gc`  | Linux (mainstream), BSD (experimental) | `riscv64_linux` |
 |  **PPC64**   | `ppc64`, `ppc64le`, `powerpc64`  | Linux, BSD, AIX                        | `ppc64_linux`   |
 
 _Roadmap: Up to 20 architectures planned across multiple platforms._
 
----
+## Compilation
 
-# UASM Language Reference
+```bash
+uac hello.ua -o hello.s -t x86_64_linux
+```
 
-## File Structure
+This generates native assembly that can be assembled and linked:
+
+```bash
+# For Linux x86_64
+as -64 hello.s -o hello.o
+ld hello.o -o hello
+./hello
+```
+
+## Contributing
+
+UAC is in active development. Contributions, bug reports, and feature requests are welcome!
+
+## License
+
+MIT
+
+## UASM Language Reference
+
+### File Structure
 
 UASM files are divided into **sections**:
 
@@ -57,7 +78,7 @@ section .rodata   ; Read-only data
 
 ---
 
-## Labels
+### Labels
 
 Use labels to mark **locations in code**:
 
@@ -75,15 +96,15 @@ end_loop:
 
 ---
 
-## Registers
+### Registers
 
-### General Purpose
+#### General Purpose
 
 ```
 r0, r1, r2, ..., r31    ; Virtual GPRs
 ```
 
-### Special Purpose
+#### Special Purpose
 
 ```
 sp      ; Stack pointer
@@ -94,9 +115,9 @@ flags   ; Condition flags register
 
 ---
 
-## Data Definition
+### Data Definition
 
-### Define Memory with Initial Values
+#### Define Memory with Initial Values
 
 ```
 db      ; Define bytes
@@ -114,7 +135,7 @@ matrix   dd 1.0, 2.0, 3.0, 4.0
 big_num  dq 0x123456789ABCDEF0
 ```
 
-### Reserve Memory without Initial Values
+#### Reserve Memory without Initial Values
 
 ```
 resb    n      ; Reserve n bytes
@@ -134,7 +155,7 @@ heap    resq 25
 
 ---
 
-## Constants and Symbols
+### Constants and Symbols
 
 Define **named constants**:
 
@@ -152,7 +173,7 @@ msg_len     equ 14
 
 ---
 
-## Data Movement
+### Data Movement
 
 ```
 mov    dest, src       ; Move value from src to dest
@@ -161,7 +182,7 @@ load   dest, [addr]    ; Load from memory
 store  [addr], src     ; Store to memory
 ```
 
-### Conditional Moves
+#### Conditional Moves
 
 ```
 cmovCC dest, src       ; Move if condition CC is met
@@ -190,7 +211,7 @@ Conditions:
 
 ---
 
-## Stack Operations
+### Stack Operations
 
 ```
 push   src        ; Push value to stack
@@ -203,7 +224,7 @@ leave                     ; Delete stack frame
 
 ---
 
-## Arithmetic Operations
+### Arithmetic Operations
 
 ```
 add    dest, src       ; Addition
@@ -220,7 +241,7 @@ neg    dest            ; Negate
 
 ---
 
-## Logical & Bitwise Operations
+### Logical & Bitwise Operations
 
 ```
 and    dest, src       ; Bitwise AND
@@ -243,7 +264,7 @@ bsr    dest, src       ; Bit scan reverse
 
 ---
 
-## Comparison & Conditional Sets
+### Comparison & Conditional Sets
 
 ```
 cmp    dest, src       ; Compare two values
@@ -257,7 +278,7 @@ setCC  dest            ; Set if condition CC is met
 
 ---
 
-## String Operations
+### String Operations
 
 ```
 cmps   src1, src2      ; Compare strings
@@ -269,7 +290,7 @@ movs   dest, src       ; Move string
 
 ---
 
-## Data Conversion
+### Data Conversion
 
 ```
 cbw   dest             ; Convert byte to word
@@ -282,7 +303,7 @@ cdqe  dest             ; Convert double word to quad word
 
 ---
 
-## Control Flow
+### Control Flow
 
 ```
 jmp    label           ; Unconditional jump
@@ -294,7 +315,7 @@ ret                     ; Return from function
 
 ---
 
-## I/O
+### I/O
 
 ```
 in     dest, port       ; Input from port
@@ -305,7 +326,7 @@ outs   port, src        ; Output string to port
 
 ---
 
-## System & CPU Operations
+### System & CPU Operations
 
 ```
 cpuid                   ; CPU identification
@@ -320,7 +341,7 @@ clwb addr               ; Writeback cache line
 
 ---
 
-## Directives
+### Directives
 
 ```
 global symbol           ; Export symbol globally
@@ -331,7 +352,7 @@ equ name, value         ; Define named constant
 
 ---
 
-## Comments
+### Comments
 
 ```
 ; Single-line comment
@@ -340,7 +361,7 @@ mov r0, 42   ; Inline comment
 
 ---
 
-## Example Program
+### Example Program
 
 Here's a complete "Hello, World!" program in UASM:
 
@@ -363,28 +384,3 @@ _start:
     mov r0, 0          ; Exit code: success
     syscall exit
 ```
-
-### Compilation
-
-```bash
-uac hello.ua -o hello.s -t x86_64_linux
-```
-
-This generates native assembly that can be assembled and linked:
-
-```bash
-# For Linux x86_64
-as -64 hello.s -o hello.o
-ld hello.o -o hello
-./hello
-```
-
----
-
-## Contributing
-
-UAC is in active development. Contributions, bug reports, and feature requests are welcome!
-
-## License
-
-MIT

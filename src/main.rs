@@ -1,3 +1,4 @@
+pub mod abs;
 pub mod arch;
 pub mod core;
 pub mod platform;
@@ -5,6 +6,7 @@ use std::env;
 use std::fs;
 use std::process;
 
+use crate::arch::list_target;
 use crate::arch::parse_target;
 use crate::core::TargetTriple;
 use crate::core::codegen::CodeGenerator;
@@ -14,7 +16,12 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        eprintln!("Usage: {} <input.ua> [-o output.s] [-t target]", args[0]);
+        eprintln!("Usage: {} <input.ua> [-o output.s] [-t target] \n", args[0]);
+        println!("List of support architectures:");
+        list_target(false)
+            .iter()
+            .for_each(|target| println!("- {}", target));
+
         process::exit(1);
     }
 
@@ -22,10 +29,11 @@ fn main() {
     let mut output_file = "output.s".to_string();
     let mut architecture = TargetTriple::new(arch::Architecture::AMD64, platform::Platform::Linux);
 
+    let mut is_silent = false;
     let mut i = 2;
     while i < args.len() {
         match args[i].as_str() {
-            "-o" => {
+            "-o" | "--output" => {
                 if i + 1 < args.len() {
                     output_file = args[i + 1].clone();
                     i += 2;
@@ -34,7 +42,7 @@ fn main() {
                     process::exit(1);
                 }
             }
-            "-t" => {
+            "-t" | "--target" => {
                 if i + 1 < args.len() {
                     let target_str = &args[i + 1];
                     let triple = match parse_target(target_str) {
@@ -51,6 +59,9 @@ fn main() {
                     process::exit(1);
                 }
             }
+            "-s" | "--silent" => {
+                is_silent = true;
+            }
             _ => {
                 eprintln!("Error: Unknown option {}", args[i]);
                 process::exit(1);
@@ -58,7 +69,7 @@ fn main() {
         }
     }
 
-    let input_content = match fs::read_to_string(input_file) {
+    let input_content = match read_as_bytes_then_string(input_file) {
         Ok(content) => content,
         Err(err) => {
             eprintln!("Error reading input file '{}': {}", input_file, err);
@@ -83,8 +94,15 @@ fn main() {
         process::exit(1);
     }
 
-    println!(
-        "Successfully compiled '{}' to '{}'",
-        input_file, output_file
-    );
+    if !is_silent {
+        println!(
+            "Successfully compiled '{}' to '{}'",
+            input_file, output_file
+        );
+    }
+}
+
+fn read_as_bytes_then_string(input_file: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let bytes = fs::read(input_file)?;
+    Ok(String::from_utf8(bytes)?)
 }

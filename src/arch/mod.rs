@@ -412,6 +412,11 @@ pub fn create_arch_codegen(architecture: &Architecture) -> Box<dyn ArchCodeGen> 
 struct ArchInfo {
     aliases: &'static [&'static str],
     supported: &'static [Platform],
+    /// - 0: Planned
+    /// - 1: Development
+    /// - 2: Unstable
+    /// - 3: Stable
+    status: usize,
 }
 
 fn arch_db() -> HashMap<Architecture, ArchInfo> {
@@ -424,6 +429,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["x86_64", "amd64", "amd", "x64", "intel64"],
                 supported: &[Linux, Windows, MacOS, BSD, Solaris, DOS],
+                status: 3,
             },
         ),
         (
@@ -431,6 +437,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["arm64", "aarch64", "arm", "armv8_a", "armv8"],
                 supported: &[Linux, Windows, MacOS, Embedded],
+                status: 3,
             },
         ),
         (
@@ -438,6 +445,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["riscv64", "riscv", "riscv64gc"],
                 supported: &[Linux, BSD, Embedded],
+                status: 2,
             },
         ),
         (
@@ -445,6 +453,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["ppc64", "ppc64le", "powerpc64"],
                 supported: &[Linux, BSD, MacOS, Embedded],
+                status: 1,
             },
         ),
         (
@@ -452,6 +461,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["x86", "i386", "ia32", "ia-32", "amd32"],
                 supported: &[Linux, Windows, MacOS, BSD, DOS],
+                status: 3,
             },
         ),
         (
@@ -459,6 +469,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["arm", "armv7", "armhf", "arm32"],
                 supported: &[Linux, MacOS, Embedded],
+                status: 3,
             },
         ),
         (
@@ -466,6 +477,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["mips", "mips32", "mipsel", "mips32r2"],
                 supported: &[Linux, BSD, Embedded],
+                status: 0,
             },
         ),
         (
@@ -473,6 +485,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["sparc64", "ultrasparc"],
                 supported: &[Linux, BSD, Solaris],
+                status: 0,
             },
         ),
         (
@@ -480,6 +493,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["ia64", "itanium"],
                 supported: &[Linux, Windows],
+                status: 0,
             },
         ),
         (
@@ -487,6 +501,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["alpha", "decalpha"],
                 supported: &[Linux, BSD],
+                status: 0,
             },
         ),
         (
@@ -494,6 +509,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["hppa", "pa-risc"],
                 supported: &[Linux, BSD],
+                status: 0,
             },
         ),
         (
@@ -501,6 +517,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["m68k", "68000", "k68"],
                 supported: &[Linux, MacOS, Embedded],
+                status: 0,
             },
         ),
         (
@@ -508,6 +525,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["avr", "atmega"],
                 supported: &[Embedded],
+                status: 0,
             },
         ),
         (
@@ -515,6 +533,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["msp430"],
                 supported: &[Embedded],
+                status: 0,
             },
         ),
         (
@@ -522,6 +541,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["superh", "sh2", "sh3", "sh4"],
                 supported: &[Linux, Embedded],
+                status: 0,
             },
         ),
         (
@@ -529,6 +549,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["vax"],
                 supported: &[BSD],
+                status: 0,
             },
         ),
         (
@@ -536,6 +557,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["nios2", "niosii"],
                 supported: &[Linux, Embedded],
+                status: 0,
             },
         ),
         (
@@ -543,6 +565,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["xtensa"],
                 supported: &[Linux, Embedded],
+                status: 0,
             },
         ),
         (
@@ -550,6 +573,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["arc", "arc32", "archs"],
                 supported: &[Linux, Embedded],
+                status: 0,
             },
         ),
         (
@@ -557,6 +581,7 @@ fn arch_db() -> HashMap<Architecture, ArchInfo> {
             ArchInfo {
                 aliases: &["z80", "zilog80"],
                 supported: &[Embedded],
+                status: 0,
             },
         ),
     ])
@@ -602,4 +627,56 @@ pub fn parse_target(input: &str) -> Option<TargetTriple> {
     }
 
     None
+}
+
+pub fn list_target(aliases: bool) -> Vec<String> {
+    use crate::platform::Platform;
+
+    let db = arch_db();
+    let mut targets = Vec::new();
+
+    for (_arch, info) in db.iter().filter(|f| f.1.status >= 2) {
+        let status = match info.status {
+            0 => "Planned",
+            1 => "Development",
+            2 => "Unstable",
+            3 => "Stable",
+            _ => "",
+        };
+        if (aliases) {
+            for &alias in info.aliases.iter() {
+                for &platform in info.supported.iter() {
+                    let platform_str = match platform {
+                        Platform::Linux => "linux",
+                        Platform::Windows => "windows",
+                        Platform::MacOS => "macos",
+                        // Platform::BSD => "bsd",
+                        // Platform::Solaris => "solaris",
+                        // Platform::DOS => "dos",
+                        // Platform::Embedded => "embedded",
+                        _ => "",
+                    };
+                    targets.push(format!("{}_{} [{}]", alias, platform_str, status));
+                }
+            }
+        } else {
+            for &platform in info.supported.iter() {
+                let platform_str = match platform {
+                    Platform::Linux => "linux",
+                    Platform::Windows => "windows",
+                    Platform::MacOS => "macos",
+                    // Platform::BSD => "bsd",
+                    // Platform::Solaris => "solaris",
+                    // Platform::DOS => "dos",
+                    // Platform::Embedded => "embedded",
+                    _ => continue
+                };
+                
+                targets.push(format!("{}_{} [{}]", info.aliases[0], platform_str, status));
+            }
+        }
+    }
+
+    targets.sort();
+    targets
 }

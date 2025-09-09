@@ -2,7 +2,6 @@ use crate::{
     arch::Architecture,
     platform::{Format, Platform},
 };
-use std::collections::HashMap;
 
 pub mod codegen;
 pub mod parser;

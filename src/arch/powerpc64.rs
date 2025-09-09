@@ -7,7 +7,7 @@ pub struct PowerPC64CodeGen {
 
 impl PowerPC64CodeGen {
     pub fn new() -> Self {
-        let mut register_map = HashMap::new();
+        let mut register_map = HashMap::with_capacity(32);
 
         // Function argument registers (PowerPC64 ABI)
         register_map.insert("r0".to_string(), "r3".to_string()); // 1st arg/return value

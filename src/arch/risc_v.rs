@@ -7,7 +7,7 @@ pub struct RISCVCodeGen {
 
 impl RISCVCodeGen {
     pub fn new() -> Self {
-        let mut register_map = HashMap::new();
+        let mut register_map = HashMap::with_capacity(32);
 
         // Function argument registers (RISC-V ABI)
         register_map.insert("r0".to_string(), "a0".to_string()); // 1st arg/return value
@@ -55,7 +55,7 @@ impl ArchCodeGen for RISCVCodeGen {
     fn generate_mov(&self, dst: &str, src: &str) -> String {
         let dst_reg = self.map_operand(dst);
         let src_op = self.map_operand(src);
-    
+
         if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
             let value: i64 = src_op.parse().unwrap_or(0);
             if value >= -2048 && value <= 2047 {
@@ -73,7 +73,7 @@ impl ArchCodeGen for RISCVCodeGen {
                 }
             }
         }
-    
+
         if src_op.starts_with('x')
             || src_op == "sp"
             || src_op.starts_with('a')
@@ -83,15 +83,16 @@ impl ArchCodeGen for RISCVCodeGen {
         {
             return format!("    mv {}, {}\n", dst_reg, src_op);
         }
-    
-        let is_label = !src_op.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
+
+        let is_label = !src_op
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_');
         if is_label {
             return format!("    la {}, {}\n", dst_reg, src_op);
         } else {
             return format!("    li {}, {}\n", dst_reg, src_op);
         }
     }
-
 
     fn generate_lea(&self, dst: &str, src: &str) -> String {
         let src_clean = if src.starts_with('[') && src.ends_with(']') {
@@ -195,18 +196,45 @@ impl ArchCodeGen for RISCVCodeGen {
                     src_op, dst_reg, dst_reg
                 )
             }
-        } else {
+        } else if src_op.starts_with('a')
+            || src_op.starts_with('t')
+            || src_op.starts_with('s')
+            || src_op == "sp"
+            || src_op == "ra"
+        {
             format!("    sub {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        } else {
+            format!(
+                "    li t6, {}\n    sub {}, {}, t6\n",
+                src_op, dst_reg, dst_reg
+            )
         }
     }
 
     fn generate_mul(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    mul {}, {}, {}\n",
-            self.map_operand(dst),
-            self.map_operand(dst),
-            self.map_operand(src)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+
+        if src_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            // RISC-V mul doesn't support immediates, load into temp register
+            format!(
+                "    li t6, {}\n    mul {}, {}, t6\n",
+                src_op, dst_reg, dst_reg
+            )
+        } else if src_op.starts_with('a')
+            || src_op.starts_with('t')
+            || src_op.starts_with('s')
+            || src_op == "sp"
+            || src_op == "ra"
+        {
+            format!("    mul {}, {}, {}\n", dst_reg, dst_reg, src_op)
+        } else {
+            // Handle symbolic constants by loading them first
+            format!(
+                "    li t6, {}\n    mul {}, {}, t6\n",
+                src_op, dst_reg, dst_reg
+            )
+        }
     }
 
     fn generate_div(&self, dst: &str, src: &str) -> String {
@@ -335,8 +363,18 @@ impl ArchCodeGen for RISCVCodeGen {
 
         if op2_op.chars().all(|c| c.is_ascii_digit() || c == '-') {
             format!("    li t6, {}\n    sub t6, {}, t6\n", op2_op, op1_reg)
-        } else {
+        } else if op2_op.starts_with('a')
+            || op2_op.starts_with('t')
+            || op2_op.starts_with('s')
+            || op2_op == "sp"
+            || op2_op == "ra"
+        {
             format!("    sub t6, {}, {}\n", op1_reg, op2_op)
+        } else {
+            format!(
+                "    addi t6, zero, %lo({})\n    sub t6, {}, t6\n",
+                op2_op, op1_reg
+            )
         }
     }
 

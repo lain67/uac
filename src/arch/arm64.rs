@@ -7,7 +7,7 @@ pub struct ARM64CodeGen {
 
 impl ARM64CodeGen {
     pub fn new() -> Self {
-        let mut register_map = HashMap::new();
+        let mut register_map = HashMap::with_capacity(32);
 
         // Function argument registers (AAPCS64)
         register_map.insert("r0".to_string(), "x0".to_string()); // 1st arg
@@ -28,12 +28,21 @@ impl ARM64CodeGen {
         register_map.insert("r13".to_string(), "x13".to_string()); // Temporary
         register_map.insert("r14".to_string(), "x14".to_string()); // Temporary
         register_map.insert("r15".to_string(), "x15".to_string()); // Temporary
+        register_map.insert("r16".to_string(), "x16".to_string()); // Temporary
+        register_map.insert("r17".to_string(), "x17".to_string()); // Temporary
+        register_map.insert("r18".to_string(), "x18".to_string()); // Platform register
 
         // Callee-saved registers
         register_map.insert("r19".to_string(), "x19".to_string());
         register_map.insert("r20".to_string(), "x20".to_string());
         register_map.insert("r21".to_string(), "x21".to_string());
         register_map.insert("r22".to_string(), "x22".to_string());
+        register_map.insert("r23".to_string(), "x23".to_string());
+        register_map.insert("r24".to_string(), "x24".to_string());
+        register_map.insert("r25".to_string(), "x25".to_string());
+        register_map.insert("r26".to_string(), "x26".to_string());
+        register_map.insert("r27".to_string(), "x27".to_string());
+        register_map.insert("r28".to_string(), "x28".to_string());
 
         // Special purpose registers
         register_map.insert("sp".to_string(), "sp".to_string());
@@ -359,84 +368,134 @@ impl ArchCodeGen for ARM64CodeGen {
     }
 
     fn generate_cmov_eq(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, eq\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len()) % 10000;
+            format!(
+                "    b.ne .Lcmove_end_{}\n    mov {}, {}\n.Lcmove_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, eq\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_ne(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, ne\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 1) % 10000;
+            format!(
+                "    b.eq .Lcmovne_end_{}\n    mov {}, {}\n.Lcmovne_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, ne\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_lt(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, lt\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 2) % 10000;
+            format!(
+                "    b.ge .Lcmovlt_end_{}\n    mov {}, {}\n.Lcmovlt_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, lt\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_le(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, le\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 3) % 10000;
+            format!(
+                "    b.gt .Lcmovle_end_{}\n    mov {}, {}\n.Lcmovle_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, le\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_gt(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, gt\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 4) % 10000;
+            format!(
+                "    b.le .Lcmovgt_end_{}\n    mov {}, {}\n.Lcmovgt_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, gt\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_ge(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, ge\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 5) % 10000;
+            format!(
+                "    b.lt .Lcmovge_end_{}\n    mov {}, {}\n.Lcmovge_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, ge\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_ov(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, vs\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 6) % 10000;
+            format!(
+                "    b.vc .Lcmovo_end_{}\n    mov {}, {}\n.Lcmovo_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, vs\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_no(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, vc\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 7) % 10000;
+            format!(
+                "    b.vs .Lcmovno_end_{}\n    mov {}, {}\n.Lcmovno_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, vc\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_s(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, mi\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 8) % 10000;
+            format!(
+                "    b.pl .Lcmovs_end_{}\n    mov {}, {}\n.Lcmovs_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, mi\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_ns(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, pl\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 9) % 10000;
+            format!(
+                "    b.mi .Lcmovns_end_{}\n    mov {}, {}\n.Lcmovns_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, pl\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_p(&self, dst: &str, src: &str) -> String {
         "// ARM64 has no parity flag, cannot synthesize cmov_p\n".to_string()
@@ -445,36 +504,56 @@ impl ArchCodeGen for ARM64CodeGen {
         "// ARM64 has no parity flag, cannot synthesize cmov_np\n".to_string()
     }
     fn generate_cmov_a(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, hi\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 12) % 10000;
+            format!(
+                "    b.ls .Lcmova_end_{}\n    mov {}, {}\n.Lcmova_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, hi\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_ae(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, hs\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 13) % 10000;
+            format!(
+                "    b.lo .Lcmovae_end_{}\n    mov {}, {}\n.Lcmovae_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, hs\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_b(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, lo\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 14) % 10000;
+            format!(
+                "    b.hs .Lcmovb_end_{}\n    mov {}, {}\n.Lcmovb_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, lo\n", dst_reg, src_op, dst_reg)
+        }
     }
     fn generate_cmov_be(&self, dst: &str, src: &str) -> String {
-        format!(
-            "    csel {}, {}, {}, ls\n",
-            self.map_operand(dst),
-            self.map_operand(src),
-            self.map_operand(dst)
-        )
+        let dst_reg = self.map_operand(dst);
+        let src_op = self.map_operand(src);
+        if src.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            let hash = (dst.len() + src.len() + 15) % 10000;
+            format!(
+                "    b.hi .Lcmovbe_end_{}\n    mov {}, {}\n.Lcmovbe_end_{}:\n",
+                hash, dst_reg, src_op, hash
+            )
+        } else {
+            format!("    csel {}, {}, {}, ls\n", dst_reg, src_op, dst_reg)
+        }
     }
 
     fn generate_push(&self, src: &str) -> String {
